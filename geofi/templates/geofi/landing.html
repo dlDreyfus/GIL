@@ -9,8 +9,14 @@
     <div style="padding: 20px 45px;">
         <!-- Tabela de Dados (Registro Financeiro) -->
         <div>
-            <h2 style="color: var(--color-primary-dark); margin-bottom: 24px;">Base de Dados Completa</h2>
-            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: var(--color-primary-dark); margin: 0;">Base de Dados RO</h2>
+                <div style="display: flex; gap: 10px;">
+                    <a href="{% url 'geofi:novo_registro' %}" class="br-button secondary" style="text-decoration: none;">Novo Registro</a>
+                    <a href="{% url 'geofi:remaneja_saldos' %}" class="br-button" style="text-decoration: none;">Remanejar Saldos</a>
+                </div>
+            </div>
+
             <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.65rem;">
                     <thead style="background-color: var(--color-gray-light); color: var(--color-primary-dark);">

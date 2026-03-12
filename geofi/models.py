@@ -10,6 +10,9 @@ class RegistroFinanceiro(models.Model):
     grupos = models.CharField(max_length=255, verbose_name="Grupos")
     despesa_gerencial = models.CharField(max_length=255, verbose_name="Despesa Gerencial")
     iniciativa = models.CharField(max_length=255, verbose_name="Iniciativa")
+    # SUGESTÃO DE NORMALIZAÇÃO: Campos com valores repetidos como 'gnd', 'unidade_coordenacao',
+    # 'iniciativa', etc., são candidatos a se tornarem modelos separados com chaves estrangeiras (ForeignKey).
+    # Exemplo: gnd = models.ForeignKey('GrupoNaturezaDespesa', on_delete=models.PROTECT)
     gnd = models.CharField(max_length=100, verbose_name="GND")
     tipo_despesa = models.CharField(max_length=255, verbose_name="Tipo de Despesa")
     ro_1 = models.DecimalField(max_digits=15, decimal_places=2, verbose_name="RO-1", null=True, blank=True)
