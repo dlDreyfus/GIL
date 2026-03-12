@@ -1,0 +1,10 @@
+# Dependências específicas do módulo Geofi
+# Instale com: pip install -r geofi/requirements.txt
+
+Django==5.1.6
+pandas==2.2.3
+openpyxl==3.1.5
+py-moneyed==3.0
+
+# Padronização de PDF para este módulo (ignorando xhtml2pdf e pdfkit do root)
+weasyprint==62.3

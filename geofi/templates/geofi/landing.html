@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Painel Principal{% endblock %}
+
+{% block main_class %}{% endblock %}
+
+{% block content %}
+    <div style="padding: 20px 45px;">
+        <!-- Tabela de Dados (Registro Financeiro) -->
+        <div>
+            <h2 style="color: var(--color-primary-dark); margin-bottom: 24px;">Base de Dados Completa</h2>
+            
+            <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.65rem;">
+                    <thead style="background-color: var(--color-gray-light); color: var(--color-primary-dark);">
+                        <tr>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Data</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Mês</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Período</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Arquivo</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">RF-SUB</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Unidade/Coord.</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Grupos</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Despesa Gerencial</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Iniciativa</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">GND</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Tipo Despesa</th>
+                            <th style="padding: 8px 4px; text-align: right; border-bottom: 2px solid #ddd;">RO-1</th>
+                            <th style="padding: 8px 4px; text-align: right; border-bottom: 2px solid #ddd;">LME-1</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">PO</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Ação</th>
+                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">PO+GND</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in page_obj %}
+                        <tr style="border-bottom: 1px solid #eee; background-color: {% cycle '#ffffff' '#f8f8f8' %};">
+                            <td style="padding: 6px 4px;">{{ r.data|date:"d/m/Y" }}</td>
+                            <td style="padding: 6px 4px;">{{ r.mes }}</td>
+                            <td style="padding: 6px 4px;">{{ r.periodo }}</td>
+                            <td style="padding: 6px 4px;">{{ r.arquivo }}</td>
+                            <td style="padding: 6px 4px;">{{ r.rf_sub }}</td>
+                            <td style="padding: 6px 4px;">{{ r.unidade_coordenacao }}</td>
+                            <td style="padding: 6px 4px;">{{ r.grupos }}</td>
+                            <td style="padding: 6px 4px;">{{ r.despesa_gerencial }}</td>
+                            <td style="padding: 6px 4px;">{{ r.iniciativa }}</td>
+                            <td style="padding: 6px 4px;">{{ r.gnd }}</td>
+                            <td style="padding: 6px 4px;">{{ r.tipo_despesa }}</td>
+                            <td style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.ro_1 < 0 %}color: red;{% endif %}">
+                                {% if r.ro_1 is not None %}R$ {{ r.ro_1|intcomma }}{% endif %}
+                            </td>
+                            <td style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.lme_1 < 0 %}color: red;{% endif %}">
+                                {% if r.lme_1 is not None %}R$ {{ r.lme_1|intcomma }}{% endif %}
+                            </td>
+                            <td style="padding: 6px 4px;">{{ r.po }}</td>
+                            <td style="padding: 6px 4px;">{{ r.acao }}</td>
+                            <td style="padding: 6px 4px;">{{ r.po_gnd }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="16" style="padding: 20px; text-align: center; color: #666;">Nenhum registro encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginação -->
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif;">
+                
+                <form method="get" action=".">
+                    <label for="per_page" style="margin-right: 5px; color: #555;">Linhas por página:</label>
+                    <select name="per_page" id="per_page" onchange="this.form.submit()" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="25" {% if per_page == '25' %}selected{% endif %}>25</option>
+                        <option value="50" {% if per_page == '50' %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+                        <option value="todos" {% if per_page == 'todos' %}selected{% endif %}>Todas</option>
+                    </select>
+                </form>
+
+                <span class="step-links">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1&per_page={{ per_page }}" style="margin-right: 10px; text-decoration: none; color: var(--color-primary);">&laquo; Primeira</a>
+                        <a href="?page={{ page_obj.previous_page_number }}&per_page={{ per_page }}" style="margin-right: 10px; text-decoration: none; color: var(--color-primary);">Anterior</a>
+                    {% endif %}
+
+                    <span class="current" style="color: #555;">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}&per_page={{ per_page }}" style="margin-left: 10px; text-decoration: none; color: var(--color-primary);">Próxima</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}&per_page={{ per_page }}" style="margin-left: 10px; text-decoration: none; color: var(--color-primary);">Última &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+{% endblock %}

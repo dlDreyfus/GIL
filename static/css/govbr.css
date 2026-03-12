@@ -1,0 +1,188 @@
+/* Variáveis de Cores do Padrão Gov.br */
+:root {
+    --color-primary-dark: #0c326f; /* Azul Escuro (Header topo/Footer) */
+    --color-primary: #1351b4;      /* Azul Gov.br (Header principal) */
+    --color-secondary: #f2d30c;    /* Amarelo (Detalhes) */
+    --color-text: #333333;         /* Texto padrão */
+    --color-background: #ffffff;   /* Fundo */
+    --color-gray-light: #f8f8f8;   /* Fundo secundário */
+    --font-family: 'Roboto', 'Open Sans', Helvetica, Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--color-text);
+    background-color: var(--color-background);
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Links */
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Container Centralizado */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* Container Fluido (Largura Total) */
+.container-fluid {
+    width: 100%;
+    padding: 0 24px;
+}
+
+/* --- HEADER (Cabeçalho) --- */
+header {
+    width: 100%;
+}
+
+/* Barra de Acessibilidade (Topo escuro) */
+.br-header-top {
+    background-color: var(--color-primary-dark);
+    color: white;
+    padding: 8px 0;
+    font-size: 0.8rem;
+}
+
+.header-top-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gov-brasil-logo {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Barra Principal (Azul Claro) */
+.br-header-main {
+    background-color: var(--color-background);
+    border-bottom: 1px solid #ddd;
+    padding: 20px 0;
+}
+
+.header-main-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.main-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    display: flex;
+    align-items: center;
+}
+
+.main-logo span {
+    border-left: 1px solid #ccc;
+    margin-left: 15px;
+    padding-left: 15px;
+    font-size: 1.2rem;
+    color: var(--color-text);
+    font-weight: 400;
+}
+
+/* --- CONTEÚDO PRINCIPAL --- */
+main {
+    flex: 1;
+    padding: 40px 0;
+}
+
+h1 {
+    font-size: 2rem;
+    color: var(--color-text);
+    margin-bottom: 24px;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    color: var(--color-primary-dark);
+}
+
+/* --- BOTÕES (Padrão Gov) --- */
+.br-button {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 10px 24px;
+    border-radius: 24px; /* Arredondado característico */
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.br-button:hover {
+    background-color: var(--color-primary-dark);
+    text-decoration: none;
+}
+
+.br-button.secondary {
+    background-color: white;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+.br-button.secondary:hover {
+    background-color: var(--color-gray-light);
+}
+
+/* --- FOOTER (Rodapé) --- */
+footer {
+    background-color: var(--color-primary-dark);
+    color: white;
+    padding: 40px 0;
+    margin-top: auto;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+}
+
+.footer-column h3 {
+    font-size: 1rem;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--color-secondary);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+.footer-column ul {
+    list-style: none;
+}
+
+.footer-column ul li {
+    margin-bottom: 8px;
+}
+
+.footer-column a {
+    color: white;
+    font-size: 0.9rem;
+}
