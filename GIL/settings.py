@@ -126,4 +126,5 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-
+# Diretório onde o collectstatic reunirá os arquivos para produção
+STATIC_ROOT = BASE_DIR / "staticfiles"
