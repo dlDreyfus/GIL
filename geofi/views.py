@@ -7,6 +7,8 @@ from .forms import RegistroFinanceiroForm, RemanejaSaldosForm
 from django.db import transaction
 from decimal import Decimal
 import json
+from django.db.models import Max, IntegerField
+from django.db.models.functions import Cast
 
 # View que renderiza a sua landing page com a tabela
 def landing_page_view(request):
@@ -29,15 +31,26 @@ def landing_page_view(request):
 
 # View para a página de "Novo Registro"
 def novo_registro_view(request):
+    # Lógica para calcular o próximo ID (linha_id) de forma incremental
+    # Converte o campo 'linha_id' (string) para Inteiro para garantir que o Max considere a ordem numérica
+    max_val = RegistroFinanceiro.objects.annotate(
+        num_id=Cast('linha_id', output_field=IntegerField())
+    ).aggregate(Max('num_id'))['num_id__max']
+    
+    # Se max_val for None (banco vazio), começa do 1, senão incrementa
+    proximo_id = (max_val or 0) + 1
+
     if request.method == 'POST':
         form = RegistroFinanceiroForm(request.POST)
         if form.is_valid():
+            # Força o salvamento do ID calculado (ignora o que vier do form, pois o campo está disabled)
+            form.instance.linha_id = str(proximo_id)
             form.save()
-            messages.success(request, 'Novo registro adicionado com sucesso!')
+            messages.success(request, f'Novo registro adicionado com sucesso! (ID: {proximo_id})')
             return redirect('geofi:landing')
     else:
         form = RegistroFinanceiroForm()
-    return render(request, 'geofi/novoRegistroBaseRo.html', {'form': form})
+    return render(request, 'geofi/novoRegistroBaseRo.html', {'form': form, 'proximo_id': proximo_id})
 
 def edita_registro_view(request, id):
     registro = get_object_or_404(RegistroFinanceiro, id=id)

@@ -13,7 +13,32 @@
             {% for field in form %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
+                
+                {% if field.label == 'ID' or field.name == 'linha_id' %}
+                    <!-- Campo ID configurado como apenas leitura e visualmente bloqueado -->
+                    <input type="text" id="{{ field.id_for_label }}" value="{{ proximo_id|default:'Gerado Automaticamente' }}" disabled 
+                           style="background-color: #eee; color: #666; cursor: not-allowed; font-style: italic;">
+                {% elif field.name == 'mes' or field.label == 'Mês' %}
+                    <!-- Campo Mês transformado em Dropdown com siglas -->
+                    <select name="{{ field.name }}" id="{{ field.id_for_label }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%; background-color: #fff;">
+                        <option value="">Selecione</option>
+                        <option value="JAN" {% if field.value == 'JAN' %}selected{% endif %}>JAN</option>
+                        <option value="FEV" {% if field.value == 'FEV' %}selected{% endif %}>FEV</option>
+                        <option value="MAR" {% if field.value == 'MAR' %}selected{% endif %}>MAR</option>
+                        <option value="ABR" {% if field.value == 'ABR' %}selected{% endif %}>ABR</option>
+                        <option value="MAI" {% if field.value == 'MAI' %}selected{% endif %}>MAI</option>
+                        <option value="JUN" {% if field.value == 'JUN' %}selected{% endif %}>JUN</option>
+                        <option value="JUL" {% if field.value == 'JUL' %}selected{% endif %}>JUL</option>
+                        <option value="AGO" {% if field.value == 'AGO' %}selected{% endif %}>AGO</option>
+                        <option value="SET" {% if field.value == 'SET' %}selected{% endif %}>SET</option>
+                        <option value="OUT" {% if field.value == 'OUT' %}selected{% endif %}>OUT</option>
+                        <option value="NOV" {% if field.value == 'NOV' %}selected{% endif %}>NOV</option>
+                        <option value="DEZ" {% if field.value == 'DEZ' %}selected{% endif %}>DEZ</option>
+                    </select>
+                {% else %}
+                    {{ field }}
+                {% endif %}
+
                 {% if field.errors %}
                     <div style="color: red; font-size: 0.8rem; margin-top: 4px;">
                         {{ field.errors.as_ul }}
