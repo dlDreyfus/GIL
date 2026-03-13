@@ -321,6 +321,13 @@ for line in lines:
     except ValueError as e:
         print(f"Erro ao converter data na linha: {line[:50]}... Erro: {e}")
 
+# Ordena os objetos pela data (da mais antiga para a mais recente)
+objects_to_create.sort(key=lambda x: x.data)
+
+# Atribui o ID sequencial formatado (0001, 0002, ...)
+for i, obj in enumerate(objects_to_create, 1):
+    obj.linha_id = f"{i:04d}"
+
 # Inserção em massa (mais rápido)
 if objects_to_create:
     RegistroFinanceiro.objects.bulk_create(objects_to_create)

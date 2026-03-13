@@ -20,9 +20,11 @@ class RegistroFinanceiro(models.Model):
     po = models.CharField(max_length=100, verbose_name="PO")
     acao = models.CharField(max_length=255, verbose_name="AÇÃO")
     po_gnd = models.CharField(max_length=100, verbose_name="PO+GND")
+    linha_id = models.CharField(max_length=10, verbose_name="ID", null=True, blank=True)
 
     def __str__(self):
-        return f"{self.data} - {self.iniciativa}"
+        # Melhoria para facilitar a identificação no dropdown (ID - Data - Iniciativa - Valor)
+        return f"#{self.id} | {self.data.strftime('%d/%m/%Y')} | {self.iniciativa} | {self.unidade_coordenacao} | R$ {self.ro_1}"
 
     class Meta:
         verbose_name = "Registro Financeiro"

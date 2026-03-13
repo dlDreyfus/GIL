@@ -1,96 +1,320 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Remanejar Saldos{% endblock %}
 
-{% block extra_head %}
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<style>
-    .select2-container .select2-selection--single {
-        height: 40px; /* Match other inputs */
-        padding: 5px;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 38px;
-    }
-</style>
-{% endblock %}
+{% block main_class %}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 20px; padding-bottom: 40px; max-width: 1100px;">
-    <h2 style="color: var(--color-primary-dark); margin-bottom: 24px;">Remanejar Saldos entre Registros</h2>
+<div style="padding: 20px 45px;">
+    
+    <!-- Cabeçalho da Página (Estilo Landing) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: var(--color-primary-dark); margin: 0;">Remanejar Saldos</h2>
+        <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Voltar</a>
+    </div>
 
-    <form method="post" novalidate style="border: 1px solid #e0e0e0; padding: 24px; border-radius: 8px; background-color: #fff;">
-        {% csrf_token %}
-
-        {% if form.non_field_errors %}
-            <div class="alert alert-danger" style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
-                {{ form.non_field_errors }}
-            </div>
-        {% endif %}
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start;">
+    <!-- Container Principal (Card Branco com Sombra) -->
+    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        
+        <form method="post" id="remaneja-form" novalidate>
+            {% csrf_token %}
             
-            <!-- Coluna da Origem -->
-            <div class="form-column">
-                <h3 style="border-bottom: 2px solid var(--color-primary); padding-bottom: 5px; margin-bottom: 20px;">Origem do Saldo</h3>
-                <div class="form-group">
-                    <label for="{{ form.registro_origem.id_for_label }}">{{ form.registro_origem.label }}</label>
-                    {{ form.registro_origem }}
-                    {% if form.registro_origem.errors %}
-                        <div style="color: red; font-size: 0.8rem; margin-top: 4px;">{{ form.registro_origem.errors.as_ul }}</div>
-                    {% endif %}
+            {% if form.non_field_errors %}
+                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Layout Flexbox para Origem e Destino lado a lado -->
+            <div style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 30px;">
+                
+                <!-- Coluna da Origem -->
+                <div class="container-lado">
+                    <h3 class="lado-titulo">Origem do Saldo</h3>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.registro_origem.id_for_label }}">{{ form.registro_origem.label }}</label>
+                        {{ form.registro_origem }}
+                        {% if form.registro_origem.errors %}
+                            <div class="error-msg">{{ form.registro_origem.errors.as_ul }}</div>
+                        {% endif %}
+                    </div>
+                    <!-- Info Card (preenchido via JS) -->
+                    <div id="info-origem" class="info-card"></div>
+                </div>
+
+                <!-- Coluna do Destino -->
+                <div class="container-lado">
+                    <h3 class="lado-titulo">Destino do Saldo</h3>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.registro_destino.id_for_label }}">{{ form.registro_destino.label }}</label>
+                        {{ form.registro_destino }}
+                        {% if form.registro_destino.errors %}
+                            <div class="error-msg">{{ form.registro_destino.errors.as_ul }}</div>
+                        {% endif %}
+                    </div>
+                    <!-- Info Card (preenchido via JS) -->
+                    <div id="info-destino" class="info-card"></div>
                 </div>
             </div>
 
-            <!-- Coluna do Destino -->
-            <div class="form-column">
-                <h3 style="border-bottom: 2px solid var(--color-primary); padding-bottom: 5px; margin-bottom: 20px;">Destino do Saldo</h3>
-                <div class="form-group">
-                    <label for="{{ form.registro_destino.id_for_label }}">{{ form.registro_destino.label }}</label>
-                    {{ form.registro_destino }}
-                    {% if form.registro_destino.errors %}
-                        <div style="color: red; font-size: 0.8rem; margin-top: 4px;">{{ form.registro_destino.errors.as_ul }}</div>
-                    {% endif %}
+            <!-- Área Inferior: Valor e Botão de Ação -->
+            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px;">
+                
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                    
+                    <!-- Linha RO-1 -->
+                    <div class="form-group">
+                        <label for="{{ form.valor_ro1.id_for_label }}" style="font-weight: 600; color: #333;">{{ form.valor_ro1.label }}</label>
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="width: 200px;">
+                                {{ form.valor_ro1 }}
+                            </div>
+                            <div id="preview-ro1" class="preview-calc"></div>
+                        </div>
+                        {% if form.valor_ro1.errors %}<div class="error-msg">{{ form.valor_ro1.errors.as_ul }}</div>{% endif %}
+                    </div>
+
+                    <!-- Linha LME-1 -->
+                    <div class="form-group">
+                        <label for="{{ form.valor_lme1.id_for_label }}" style="font-weight: 600; color: #333;">{{ form.valor_lme1.label }}</label>
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="width: 200px;">
+                                {{ form.valor_lme1 }}
+                            </div>
+                            <div id="preview-lme1" class="preview-calc"></div>
+                        </div>
+                        {% if form.valor_lme1.errors %}<div class="error-msg">{{ form.valor_lme1.errors.as_ul }}</div>{% endif %}
+                    </div>
+
                 </div>
-            </div>
-        </div>
+                <small style="display: block; color: #666; margin-bottom: 20px; margin-top: -10px;">Informe valores positivos. O valor será subtraído da Origem e somado ao Destino.</small>
 
-        <!-- Campo de Valor -->
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-            <div class="form-group" style="max-width: 300px; margin: 0 auto;">
-                <label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
-                {{ form.valor }}
-                <small>{{ form.valor.help_text }}</small>
-                {% if form.valor.errors %}
-                    <div style="color: red; font-size: 0.8rem; margin-top: 4px;">{{ form.valor.errors.as_ul }}</div>
-                {% endif %}
+                <button type="submit" class="br-button">Confirmar Remanejamento</button>
             </div>
-        </div>
 
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; text-align: center;">
-            <button type="submit" class="br-button">Confirmar Remanejamento</button>
-            <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Cancelar</a>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 <style>
-    .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
-    .form-group label { margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: #333; }
-    .form-group input, .form-group select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%; }
-    .form-group small { font-size: 0.8rem; color: #666; margin-top: 4px; }
-</style>
-{% endblock %}
+    /* Estilos Gerais do Formulário */
+    .container-lado {
+        flex: 1; 
+        padding: 20px; 
+        border: 1px solid #e0e0e0; 
+        border-radius: 8px; 
+        background-color: #fcfcfc; 
+        display: flex; 
+        flex-direction: column;
+    }
+    .lado-titulo {
+        color: var(--color-primary); 
+        border-bottom: 1px solid #ddd; 
+        padding-bottom: 10px; 
+        margin-bottom: 15px; 
+        margin-top: 0;
+        font-size: 1.1rem;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #555;
+    }
+    .form-group select, .form-group input[type="number"], .form-group input[type="text"] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 0.95rem;
+        background-color: #fff;
+    }
+    .error-msg {
+        color: #d9534f;
+        font-size: 0.8rem;
+        margin-top: 4px;
+    }
 
-{% block extra_js %}
-<!-- JQuery (required for Select2) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    /* Estilos do Grid de Informações */
+    .info-card {
+        margin-top: 15px;
+        flex-grow: 1;
+        /* Oculto até carregar dados */
+        display: none; 
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: 40% 60%;
+        row-gap: 8px;
+        column-gap: 10px;
+        align-items: center;
+    }
+    .info-grid .label-col {
+        text-align: right;
+        font-weight: 600;
+        color: #666;
+        font-size: 0.75rem;
+    }
+    .info-grid .input-col input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        color: #333;
+        border-radius: 3px;
+    }
+    /* Estilos para a previsão de cálculo */
+    .preview-calc {
+        font-size: 0.85rem;
+        color: #555;
+    }
+</style>
+
 <script>
-$(document).ready(function() {
-    $('.select2-widget').select2();
-});
+    document.addEventListener('DOMContentLoaded', function() {
+        const origemSelect = document.getElementById('{{ form.registro_origem.id_for_label }}');
+        const destinoSelect = document.getElementById('{{ form.registro_destino.id_for_label }}');
+        
+        const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        // Referências aos inputs de valor
+        const inputRo1 = document.getElementById('{{ form.valor_ro1.id_for_label }}');
+        const inputLme1 = document.getElementById('{{ form.valor_lme1.id_for_label }}');
+
+        // Armazenamento local dos dados para cálculo em tempo real
+        let dadosOrigem = null;
+        let dadosDestino = null;
+
+        function renderGridRow(label, value, inputStyle = '') {
+            const safeValue = (value !== null && value !== undefined) ? String(value).replace(/"/g, '&quot;') : '';
+            return `
+                <div class="label-col">${label}</div>
+                <div class="input-col"><input type="text" value="${safeValue}" readonly style="${inputStyle}"></div>
+            `;
+        }
+
+        function updateInfo(selectElement, containerId) {
+            const registroId = selectElement.value;
+            const $container = document.querySelector('#' + containerId);
+            const isOrigem = containerId === 'info-origem';
+            
+            if (!registroId) {
+                $container.style.display = 'none';
+                $container.innerHTML = '';
+                // Limpa dados armazenados
+                if (isOrigem) dadosOrigem = null; else dadosDestino = null;
+                calculatePreviews(); // Recalcula (vai limpar os previews)
+                return;
+            }
+
+            fetch(`{% url 'geofi:remaneja_saldos' %}?ajax=true&registro_id=${registroId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) return;
+                    
+                    // Armazena dados para cálculo
+                    if (isOrigem) dadosOrigem = data; else dadosDestino = data;
+                    // Atualiza cálculos visuais
+                    calculatePreviews();
+
+                    const ro1Fmt = moneyFormatter.format(data.ro_1);
+                    const lme1Fmt = moneyFormatter.format(data.lme_1);
+                    const colorRo1 = data.ro_1 < 0 ? '#d9534f' : '#28a745';
+                    const colorLme1 = data.lme_1 < 0 ? '#d9534f' : '#28a745';
+
+                    let html = '<div class="info-grid">';
+                    html += renderGridRow('Data', data.data_display);
+                    html += renderGridRow('Mês', data.mes);
+                    html += renderGridRow('Período', data.periodo);
+                    html += renderGridRow('Arquivo', data.arquivo);
+                    html += renderGridRow('RF-SUB', data.rf_sub);
+                    html += renderGridRow('Unidade/Coord.', data.unidade_coordenacao);
+                    html += renderGridRow('Grupos', data.grupos);
+                    html += renderGridRow('Desp. Gerencial', data.despesa_gerencial);
+                    html += renderGridRow('Iniciativa', data.iniciativa);
+                    html += renderGridRow('GND', data.gnd);
+                    html += renderGridRow('Tipo Despesa', data.tipo_despesa);
+                    html += renderGridRow('PO', data.po);
+                    html += renderGridRow('Ação', data.acao);
+                    html += renderGridRow('PO+GND', data.po_gnd);
+                    html += renderGridRow('Saldo RO-1', ro1Fmt, `font-weight: bold; color: ${colorRo1};`);
+                    html += renderGridRow('Saldo LME-1', lme1Fmt, `font-weight: bold; color: ${colorLme1};`);
+                    html += '</div>';
+
+                    $container.innerHTML = html;
+                    $container.style.display = 'block';
+                })
+                .catch(err => console.error('Erro ao buscar dados:', err));
+        }
+
+        function calculatePreviews() {
+            // Helper para calcular e gerar HTML
+            function generatePreviewHtml(valInput, origemTotal, destinoTotal, elementId) {
+                const container = document.getElementById(elementId);
+                if (!dadosOrigem || !dadosDestino) {
+                    container.innerHTML = '<span style="color: #999;">Selecione origem e destino para ver o cálculo.</span>';
+                    return;
+                }
+
+                // Converte input (texto) para float. Substitui vírgula por ponto se necessário
+                let val = parseFloat(valInput.value.replace(',', '.')) || 0;
+                
+                // Cálculo
+                const novoOrigem = origemTotal - val;
+                const novoDestino = destinoTotal + val;
+
+                // Formatação
+                const fmtOrigem = moneyFormatter.format(novoOrigem);
+                const fmtDestino = moneyFormatter.format(novoDestino);
+                
+                // Cores para indicar saldo negativo/positivo
+                const colorOrig = novoOrigem < 0 ? '#d9534f' : '#28a745';
+                const colorDest = novoDestino < 0 ? '#d9534f' : '#28a745';
+
+                container.innerHTML = `
+                    <span style="margin-right: 15px;">
+                        Origem: <strong style="color: ${colorOrig};">${fmtOrigem}</strong>
+                    </span>
+                    <span>
+                        Destino: <strong style="color: ${colorDest};">${fmtDestino}</strong>
+                    </span>
+                `;
+            }
+
+            // RO-1
+            const ro1Origem = dadosOrigem ? dadosOrigem.ro_1 : 0;
+            const ro1Destino = dadosDestino ? dadosDestino.ro_1 : 0;
+            generatePreviewHtml(inputRo1, ro1Origem, ro1Destino, 'preview-ro1');
+
+            // LME-1
+            const lme1Origem = dadosOrigem ? dadosOrigem.lme_1 : 0;
+            const lme1Destino = dadosDestino ? dadosDestino.lme_1 : 0;
+            generatePreviewHtml(inputLme1, lme1Origem, lme1Destino, 'preview-lme1');
+        }
+
+        // Event Listeners
+        if (origemSelect) {
+            origemSelect.addEventListener('change', () => updateInfo(origemSelect, 'info-origem'));
+            // Carregar dados iniciais se houver valor selecionado (ex: erro de validação no POST)
+            if (origemSelect.value) updateInfo(origemSelect, 'info-origem');
+        }
+        
+        if (destinoSelect) {
+            destinoSelect.addEventListener('change', () => updateInfo(destinoSelect, 'info-destino'));
+            if (destinoSelect.value) updateInfo(destinoSelect, 'info-destino');
+        }
+
+        // Listeners nos inputs de valor para recalcular em tempo real
+        if (inputRo1) inputRo1.addEventListener('input', calculatePreviews);
+        if (inputLme1) inputLme1.addEventListener('input', calculatePreviews);
+    });
 </script>
 {% endblock %}

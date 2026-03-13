@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Registro{% endblock %}
+
+{% block content %}
+<div style="padding: 20px 45px;">
+    
+    <!-- Cabeçalho (Estilo Landing) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: var(--color-primary-dark); margin: 0;">
+            Editar Registro <span style="font-weight: normal; color: #666;">(ID: {{ registro.linha_id|default:registro.id }})</span>
+        </h2>
+        <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Voltar</a>
+    </div>
+
+    <!-- Card Principal -->
+    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; row-gap: 15px;">
+                {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div style="color: #d9534f; font-size: 0.8rem; margin-top: 4px;">
+                            {{ field.errors.as_ul }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 10px;">
+                <button type="submit" class="br-button">Salvar Alterações</button>
+                <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: #555; }
+    .form-group input, .form-group select, .form-group textarea {
+        padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%;
+        background-color: #fcfcfc;
+    }
+</style>
+{% endblock %}
