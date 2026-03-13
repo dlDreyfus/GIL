@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-&8!1uzed-!%*6d0f1o#nmml2@4hh4kdi0502k*swz1w6n8=rbi
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['dldreyfus.pythonanywhere.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -125,3 +125,5 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+
