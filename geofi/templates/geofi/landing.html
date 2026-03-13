@@ -18,28 +18,27 @@
             </div>
 
             <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.65rem;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.6rem;">
                     <thead style="background-color: var(--color-gray-light); color: var(--color-primary-dark);">
                         <tr>
-                            <th style="padding: 8px 4px; text-align: center; border-bottom: 2px solid #ddd; width: 50px;">ID</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Data</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Mês</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Período</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Arquivo</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">RF-SUB</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Unidade/Coord.</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Grupos</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Despesa Gerencial</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Iniciativa</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">GND</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Tipo Despesa</th>
-                            <th style="padding: 8px 4px; text-align: right; border-bottom: 2px solid #ddd;">RO-1</th>
-                            <th style="padding: 8px 4px; text-align: right; border-bottom: 2px solid #ddd;">LME-1</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">PO</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">Ação</th>
-                            <th style="padding: 8px 4px; text-align: left; border-bottom: 2px solid #ddd;">PO+GND</th>
-                            <th style="padding: 8px 4px; text-align: center; border-bottom: 2px solid #ddd; width: 40px;">Editar</th>
-                            <th style="padding: 8px 4px; text-align: center; border-bottom: 2px solid #ddd; width: 40px;">Apagar</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd; width: 50px;">ID</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Data</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Mês</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Arquivo</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">RF-SUB</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Unidade/Coord.</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Grupos</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Desp. Ger.</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Iniciativa</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">GND</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Tipo Despesa</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">RO-1</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">LME-1</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">PO</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">Ação</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd;">PO+GND</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd; width: 40px;">Editar</th>
+                            <th style="padding: 5px 1px; text-align: center; border-bottom: 1px solid #ddd; width: 40px;">Apagar</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,7 +47,6 @@
                             <td style="padding: 6px 4px; text-align: center;">{{ r.linha_id|default:"-" }}</td>
                             <td style="padding: 6px 4px;">{{ r.data|date:"d/m/Y" }}</td>
                             <td style="padding: 6px 4px;">{{ r.mes }}</td>
-                            <td style="padding: 6px 4px;">{{ r.periodo }}</td>
                             <td style="padding: 6px 4px;">{{ r.arquivo }}</td>
                             <td style="padding: 6px 4px;">{{ r.rf_sub }}</td>
                             <td style="padding: 6px 4px;">{{ r.unidade_coordenacao }}</td>
