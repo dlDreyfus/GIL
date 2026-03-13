@@ -23,7 +23,13 @@
                 {% for field in form %}
                 <div class="form-group">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
+                    {% if field.label == 'ID' or field.name == 'linha_id' %}
+                        <!-- Campo ID configurado como apenas leitura (readonly) para manter o envio do dado, mas bloqueado visualmente -->
+                        <input type="text" name="{{ field.name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" readonly
+                               style="background-color: #eee; color: #666; cursor: not-allowed;">
+                    {% else %}
+                        {{ field }}
+                    {% endif %}
                     {% if field.errors %}
                         <div style="color: #d9534f; font-size: 0.8rem; margin-top: 4px;">
                             {{ field.errors.as_ul }}
