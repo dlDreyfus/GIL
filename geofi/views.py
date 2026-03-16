@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
 from django.contrib import messages
 from .models import RegistroFinanceiro
@@ -7,6 +7,7 @@ from .forms import RegistroFinanceiroForm, RemanejaSaldosForm
 from django.db import transaction
 from decimal import Decimal
 import json
+import csv
 from django.db.models import Max, IntegerField
 from django.db.models.functions import Cast
 
@@ -14,6 +15,37 @@ from django.db.models.functions import Cast
 def landing_page_view(request):
     registros_list = RegistroFinanceiro.objects.all().order_by('-data', '-id')
     
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="base_ro.csv"'
+        response.write('\ufeff') # Permite que o Excel abra o arquivo UTF-8 corretamente
+        
+        writer = csv.writer(response, delimiter=';')
+        writer.writerow(['ID', 'Data', 'Mês', 'Período', 'Arquivo', 'RF-SUB', 'Unidade/Coord.', 'Grupos', 'Despesa Gerencial', 'Iniciativa', 'GND', 'Tipo Despesa', 'RO-1', 'LME-1', 'PO', 'Ação', 'PO+GND'])
+        
+        for r in registros_list:
+            writer.writerow([
+                r.linha_id,
+                r.data.strftime('%d/%m/%Y') if r.data else '',
+                r.mes,
+                r.periodo,
+                r.arquivo,
+                r.rf_sub,
+                r.unidade_coordenacao,
+                r.grupos,
+                r.despesa_gerencial,
+                r.iniciativa,
+                r.gnd,
+                r.tipo_despesa,
+                str(r.ro_1).replace('.', ',') if r.ro_1 is not None else '',
+                str(r.lme_1).replace('.', ',') if r.lme_1 is not None else '',
+                r.po,
+                r.acao,
+                r.po_gnd
+            ])
+            
+        return response
+
     per_page = request.GET.get('per_page', '25')
 
     if per_page != 'todos':

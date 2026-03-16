@@ -93,6 +93,10 @@
                     </select>
                 </form>
 
+                <a href="?export=csv" style="text-decoration: none; font-size: 1.5rem; transition: transform 0.2s;" title="Baixar registros em CSV" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    &#128229;
+                </a>
+
                 <span class="step-links">
                     {% if page_obj.has_previous %}
                         <a href="?page=1&per_page={{ per_page }}" style="margin-right: 10px; text-decoration: none; color: var(--color-primary);">&laquo; Primeira</a>
