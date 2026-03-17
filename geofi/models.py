@@ -1,7 +1,7 @@
 from django.db import models
 
 class RegistroFinanceiro(models.Model):
-    data = models.DateField(verbose_name="DATA")
+    data = models.DateField(verbose_name="DATA", null=True, blank=True)
     mes = models.CharField(max_length=20, verbose_name="Mês")
     periodo = models.CharField(max_length=50, verbose_name="Período")
     arquivo = models.CharField(max_length=255, verbose_name="ARQUIVO")
@@ -24,7 +24,7 @@ class RegistroFinanceiro(models.Model):
 
     def __str__(self):
         # Melhoria para facilitar a identificação no dropdown (ID - Data - Iniciativa - Valor)
-        return f"#{self.id} | {self.data.strftime('%d/%m/%Y')} | {self.iniciativa} | {self.unidade_coordenacao} | R$ {self.ro_1}"
+        return f"#{self.id} | {self.data.strftime('%d/%m/%Y') if self.data else '-'} | {self.iniciativa} | {self.unidade_coordenacao} | R$ {self.ro_1}"
 
     class Meta:
         verbose_name = "Registro Financeiro"

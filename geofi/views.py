@@ -10,10 +10,112 @@ import json
 import csv
 from django.db.models import Max, IntegerField
 from django.db.models.functions import Cast
+from datetime import datetime
+
+def parse_currency(value_str):
+    """Converte uma string de moeda no formato brasileiro para um objeto Decimal."""
+    if not value_str:
+        return None
+    value_str = str(value_str).strip()
+    if not value_str or value_str == '-' or value_str == '#N/D':
+        return None
+    try:
+        # Remove o separador de milhares (.) e substitui a vírgula decimal (,) por ponto (.)
+        cleaned_str = value_str.replace('.', '').replace(',', '.')
+        return Decimal(cleaned_str)
+    except Exception:
+        return None
 
 # View que renderiza a sua landing page com a tabela
 def landing_page_view(request):
-    registros_list = RegistroFinanceiro.objects.all().order_by('-data', '-id')
+    if request.method == 'POST' and request.FILES.get('csv_file'):
+        csv_file = request.FILES['csv_file']
+        
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'O arquivo não é um CSV válido.')
+            return redirect('geofi:landing')
+            
+        try:
+            # Processa o arquivo CSV recebido
+            raw_data = csv_file.read()
+            
+            # Tenta decodificar como UTF-8, com fallback para ANSI (padrão do Excel no Brasil)
+            try:
+                file_string = raw_data.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                file_string = raw_data.decode('cp1252')
+                
+            file_lines = file_string.splitlines()
+            
+            # Autodetecta o delimitador (; ou ,)
+            delimiter = ';' if ';' in file_lines[0] else ','
+            reader = csv.DictReader(file_lines, delimiter=delimiter)
+            
+            objects_to_create = []
+            for row in reader:
+                # Ignora linhas vazias de forma segura (previne erro se o valor for None ou Lista)
+                is_empty = True
+                for val in row.values():
+                    if isinstance(val, str) and val.strip():
+                        is_empty = False
+                        break
+                    elif isinstance(val, list) and any(isinstance(v, str) and v.strip() for v in val):
+                        is_empty = False
+                        break
+                
+                if is_empty:
+                    continue
+                
+                date_str = str(row.get('Data') or '').strip()
+                date_obj = None
+                if date_str:
+                    try:
+                        # Suporta o formato YYYY-MM-DD e DD/MM/YYYY
+                        if '-' in date_str:
+                            date_obj = datetime.strptime(date_str[:10], '%Y-%m-%d').date()
+                        else:
+                            date_obj = datetime.strptime(date_str[:10], '%d/%m/%Y').date()
+                    except ValueError:
+                        pass
+                
+                obj = RegistroFinanceiro(
+                    linha_id=str(row.get('ID') or '')[:10],
+                    data=date_obj,
+                    mes=str(row.get('Mês') or '')[:20],
+                    periodo=str(row.get('Período') or '')[:50],
+                    arquivo=str(row.get('Arquivo') or '')[:255],
+                    rf_sub=str(row.get('RF-SUB') or '')[:100],
+                    unidade_coordenacao=str(row.get('Unidade/Coord.') or '')[:255],
+                    grupos=str(row.get('Grupos') or '')[:255],
+                    despesa_gerencial=str(row.get('Despesa Gerencial') or '')[:255],
+                    iniciativa=str(row.get('Iniciativa') or '')[:255],
+                    gnd=str(row.get('GND') or '')[:100],
+                    tipo_despesa=str(row.get('Tipo Despesa') or '')[:255],
+                    ro_1=parse_currency(row.get('RO-1')),
+                    lme_1=parse_currency(row.get('LME-1')),
+                    po=str(row.get('PO') or '')[:100],
+                    acao=str(row.get('Ação') or '')[:255],
+                    po_gnd=str(row.get('PO+GND') or '')[:100]
+                )
+                objects_to_create.append(obj)
+                
+            if objects_to_create:
+                # Exclui todos os registros antigos e insere os novos em lote
+                RegistroFinanceiro.objects.all().delete()
+                RegistroFinanceiro.objects.bulk_create(objects_to_create)
+                messages.success(request, f'Base atualizada com sucesso! {len(objects_to_create)} registros importados.')
+            else:
+                messages.warning(request, 'O arquivo CSV selecionado estava vazio ou sem registros válidos.')
+                
+        except Exception as e:
+            messages.error(request, f'Erro ao processar o arquivo CSV: {str(e)}')
+            print("Erro no upload do CSV:", e)  # Log no console para rastreamento
+            
+        return redirect('geofi:landing')
+
+    registros_list = RegistroFinanceiro.objects.annotate(
+        num_id=Cast('linha_id', output_field=IntegerField())
+    ).order_by('-num_id')
     
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')

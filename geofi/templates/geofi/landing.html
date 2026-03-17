@@ -7,6 +7,18 @@
 
 {% block content %}
     <div style="padding: 20px 45px;">
+
+        <!-- Exibição de Alertas do Sistema -->
+        {% if messages %}
+            <div style="margin-bottom: 20px;">
+                {% for message in messages %}
+                    <div style="padding: 12px; border-radius: 4px; margin-bottom: 5px; font-weight: 600; {% if message.tags == 'error' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
         <!-- Tabela de Dados (Registro Financeiro) -->
         <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -93,9 +105,18 @@
                     </select>
                 </form>
 
-                <a href="?export=csv" style="text-decoration: none; font-size: 1.5rem; transition: transform 0.2s;" title="Baixar registros em CSV" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-                    &#128229;
-                </a>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <form method="post" enctype="multipart/form-data" id="upload-form" style="display: inline; margin: 0;">
+                        {% csrf_token %}
+                        <input type="file" id="csv-upload" name="csv_file" style="display: none;" onchange="document.getElementById('upload-form').submit();" accept=".csv">
+                        <label for="csv-upload" style="cursor: pointer; font-size: 1.5rem; transition: transform 0.2s; display: inline-block; margin: 0;" title="Fazer upload de registros (Atualizar Base)" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                            &#128228;
+                        </label>
+                    </form>
+                    <a href="?export=csv" style="text-decoration: none; font-size: 1.5rem; transition: transform 0.2s;" title="Baixar registros em CSV" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        &#128229;
+                    </a>
+                </div>
 
                 <span class="step-links">
                     {% if page_obj.has_previous %}
