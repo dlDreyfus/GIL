@@ -48,6 +48,9 @@
             {% endfor %}
         </div>
 
+        <!-- Alerta dinâmico para RO-1 e LME-1 -->
+        <div id="valores-alert" style="display: none; padding: 12px; border-radius: 4px; margin-top: 20px; font-weight: 600; text-align: center;"></div>
+
         <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 10px;">
             <button type="submit" class="br-button">Salvar Registro</button>
             <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Cancelar</a>
@@ -71,6 +74,48 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         font-size: 1rem;
+        width: 100%;
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // O Django automaticamente define o ID dos campos com o prefixo 'id_' seguido do nome da variável no Model
+        const ro1Input = document.getElementById('id_ro_1');
+        const lme1Input = document.getElementById('id_lme_1');
+        const alertBox = document.getElementById('valores-alert');
+
+        if (ro1Input && lme1Input && alertBox) {
+            function checkValues() {
+                const valRo = ro1Input.value;
+                const valLme = lme1Input.value;
+
+                if (!valRo && !valLme) {
+                    alertBox.style.display = 'none';
+                    return;
+                }
+
+                alertBox.style.display = 'block';
+                if (valRo === valLme) {
+                    alertBox.style.backgroundColor = '#d4edda';
+                    alertBox.style.color = '#155724';
+                    alertBox.style.border = '1px solid #c3e6cb';
+                    alertBox.textContent = 'Os valores do RO e LME são iguais como recomendado!';
+                } else {
+                    alertBox.style.backgroundColor = '#fff3cd';
+                    alertBox.style.color = '#856404';
+                    alertBox.style.border = '1px solid #ffeeba';
+                    alertBox.textContent = 'Tenha certeza que os valores do RO e LME devem ser diferentes!';
+                }
+            }
+
+            ro1Input.addEventListener('input', function() {
+                lme1Input.value = this.value;
+                checkValues();
+            });
+
+            lme1Input.addEventListener('input', checkValues);
+        }
+    });
+</script>
 {% endblock %}
