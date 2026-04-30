@@ -3,6 +3,9 @@
 {% block title %}Novo Registro Financeiro{% endblock %}
 
 {% block content %}
+<!-- Include Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <div class="container" style="padding-top: 20px; padding-bottom: 40px; max-width: 960px;">
     <h2 style="color: var(--color-primary-dark); margin-bottom: 24px;">Adicionar Novo Registro</h2>
     
@@ -17,10 +20,10 @@
                 {% if field.label == 'ID' or field.name == 'linha_id' %}
                     <!-- Campo ID configurado como apenas leitura e visualmente bloqueado -->
                     <input type="text" id="{{ field.id_for_label }}" value="{{ proximo_id|default:'Gerado Automaticamente' }}" disabled 
-                           style="background-color: #eee; color: #666; cursor: not-allowed; font-style: italic;">
+                           style="background-color: #eee; color: #666; cursor: not-allowed; font-style: italic; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%;">
                 {% elif field.name == 'mes' or field.label == 'Mês' %}
                     <!-- Campo Mês transformado em Dropdown com siglas -->
-                    <select name="{{ field.name }}" id="{{ field.id_for_label }}" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%; background-color: #fff;">
+                    <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="select2-field form-control" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%; background-color: #fff;">
                         <option value="">Selecione</option>
                         <option value="JAN" {% if field.value == 'JAN' %}selected{% endif %}>JAN</option>
                         <option value="FEV" {% if field.value == 'FEV' %}selected{% endif %}>FEV</option>
@@ -76,11 +79,104 @@
         font-size: 1rem;
         width: 100%;
     }
+    .select2-container .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        display: flex;
+        align-items: center;
+    }
 </style>
 
+<!-- Include jQuery and Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+    function preencherDataAtualSeVazia() {
+        const dataInput = document.getElementById('id_data');
+        if (!dataInput || dataInput.value) return;
+
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
+        dataInput.value = `${ano}-${mes}-${dia}`;
+    }
+
+    $(document).ready(function() {
+        preencherDataAtualSeVazia();
+
+        // Inicializa o select2 para busca dentro dos dropdowns
+        $('.select2-field').select2({
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Nenhum resultado encontrado";
+                }
+            }
+        });
+
+        // Lógica de cascata (Filtros Dependentes)
+        const rfSubSelect = $('#id_rf_sub');
+        const unidCoordSelect = $('#id_unidade_coordenacao');
+        
+        const gndSelect = $('#id_gnd');
+        const poSelect = $('#id_po');
+        const poGndSelect = $('#id_po_gnd');
+
+        // Backup das opções originais para poder restaurar
+        const originalUnidCoord = unidCoordSelect.find('option').clone();
+        const originalPoGnd = poGndSelect.find('option').clone();
+
+        function filterUnidCoord() {
+            const rfSubVal = rfSubSelect.val();
+            unidCoordSelect.empty().append(originalUnidCoord.clone());
+            
+            if (rfSubVal) {
+                let searchTerm = rfSubVal.replace('RF', '').trim();
+                unidCoordSelect.find('option').each(function() {
+                    let optVal = $(this).val();
+                    if (optVal && !optVal.includes(searchTerm) && !optVal.includes(rfSubVal)) {
+                        $(this).remove();
+                    }
+                });
+            }
+            unidCoordSelect.trigger('change');
+        }
+
+        function filterPoGnd() {
+            const gndVal = gndSelect.val();
+            const poVal = poSelect.val();
+            poGndSelect.empty().append(originalPoGnd.clone());
+
+            poGndSelect.find('option').each(function() {
+                let optVal = $(this).val();
+                if (!optVal) return;
+
+                let keep = true;
+                if (gndVal && !optVal.toLowerCase().includes(gndVal.toLowerCase())) {
+                    keep = false;
+                }
+                if (poVal && !optVal.toLowerCase().includes(poVal.toLowerCase())) {
+                    keep = false;
+                }
+
+                if (!keep) {
+                    $(this).remove();
+                }
+            });
+            poGndSelect.trigger('change');
+        }
+
+        rfSubSelect.on('change', filterUnidCoord);
+        gndSelect.on('change', filterPoGnd);
+        poSelect.on('change', filterPoGnd);
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
-        // O Django automaticamente define o ID dos campos com o prefixo 'id_' seguido do nome da variável no Model
+        preencherDataAtualSeVazia();
+
         const ro1Input = document.getElementById('id_ro_1');
         const lme1Input = document.getElementById('id_lme_1');
         const alertBox = document.getElementById('valores-alert');

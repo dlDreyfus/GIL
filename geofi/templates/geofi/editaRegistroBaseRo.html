@@ -3,6 +3,9 @@
 {% block title %}Editar Registro{% endblock %}
 
 {% block content %}
+<!-- Include Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <div style="padding: 20px 45px;">
     
     <!-- Cabeçalho (Estilo Landing) -->
@@ -27,6 +30,23 @@
                         <!-- Campo ID configurado como apenas leitura (readonly) para manter o envio do dado, mas bloqueado visualmente -->
                         <input type="text" name="{{ field.name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" readonly
                                style="background-color: #eee; color: #666; cursor: not-allowed;">
+                    {% elif field.name == 'mes' or field.label == 'Mês' %}
+                        <!-- Campo Mês transformado em Dropdown com siglas -->
+                        <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="select2-field form-control" style="padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%; background-color: #fcfcfc;">
+                            <option value="">Selecione</option>
+                            <option value="JAN" {% if field.value == 'JAN' %}selected{% endif %}>JAN</option>
+                            <option value="FEV" {% if field.value == 'FEV' %}selected{% endif %}>FEV</option>
+                            <option value="MAR" {% if field.value == 'MAR' %}selected{% endif %}>MAR</option>
+                            <option value="ABR" {% if field.value == 'ABR' %}selected{% endif %}>ABR</option>
+                            <option value="MAI" {% if field.value == 'MAI' %}selected{% endif %}>MAI</option>
+                            <option value="JUN" {% if field.value == 'JUN' %}selected{% endif %}>JUN</option>
+                            <option value="JUL" {% if field.value == 'JUL' %}selected{% endif %}>JUL</option>
+                            <option value="AGO" {% if field.value == 'AGO' %}selected{% endif %}>AGO</option>
+                            <option value="SET" {% if field.value == 'SET' %}selected{% endif %}>SET</option>
+                            <option value="OUT" {% if field.value == 'OUT' %}selected{% endif %}>OUT</option>
+                            <option value="NOV" {% if field.value == 'NOV' %}selected{% endif %}>NOV</option>
+                            <option value="DEZ" {% if field.value == 'DEZ' %}selected{% endif %}>DEZ</option>
+                        </select>
                     {% else %}
                         {{ field }}
                     {% endif %}
@@ -57,10 +77,177 @@
         padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%;
         background-color: #fcfcfc;
     }
+    .select2-container .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        display: flex;
+        align-items: center;
+        background-color: #fcfcfc !important;
+    }
 </style>
 
+<!-- Include jQuery and Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+    function preencherDataAtualSeVazia() {
+        const dataInput = document.getElementById('id_data');
+        if (!dataInput || dataInput.value) return;
+
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
+        dataInput.value = `${ano}-${mes}-${dia}`;
+    }
+
+    {% if not form.is_bound %}
+    const registroInicial = {
+        data: "{{ registro.data|date:'Y-m-d'|default_if_none:''|escapejs }}",
+        mes: "{{ registro.mes|default_if_none:''|escapejs }}",
+        periodo: "{{ registro.periodo|default_if_none:''|escapejs }}",
+        arquivo: "{{ registro.arquivo|default_if_none:''|escapejs }}",
+        rf_sub: "{{ registro.rf_sub|default_if_none:''|escapejs }}",
+        unidade_coordenacao: "{{ registro.unidade_coordenacao|default_if_none:''|escapejs }}",
+        grupos: "{{ registro.grupos|default_if_none:''|escapejs }}",
+        despesa_gerencial: "{{ registro.despesa_gerencial|default_if_none:''|escapejs }}",
+        iniciativa: "{{ registro.iniciativa|default_if_none:''|escapejs }}",
+        gnd: "{{ registro.gnd|default_if_none:''|escapejs }}",
+        tipo_despesa: "{{ registro.tipo_despesa|default_if_none:''|escapejs }}",
+        ro_1: "{{ registro.ro_1|default_if_none:''|escapejs }}",
+        lme_1: "{{ registro.lme_1|default_if_none:''|escapejs }}",
+        po: "{{ registro.po|default_if_none:''|escapejs }}",
+        acao: "{{ registro.acao|default_if_none:''|escapejs }}",
+        po_gnd: "{{ registro.po_gnd|default_if_none:''|escapejs }}",
+        linha_id: "{{ registro.linha_id|default:registro.id|escapejs }}"
+    };
+
+    function ensureSelectedOption($field, value) {
+        if (!$field.is('select') || !value) return;
+        const optionExists = $field.find('option').filter(function() {
+            return $(this).val() === value;
+        }).length > 0;
+
+        if (!optionExists) {
+            $field.append(new Option(value, value, true, true));
+        }
+    }
+
+    function preencherCamposComRegistro() {
+        Object.entries(registroInicial).forEach(function([name, value]) {
+            const $field = $('[name="' + name + '"]');
+            if (!$field.length) return;
+
+            ensureSelectedOption($field, value);
+            $field.val(value);
+        });
+    }
+    {% endif %}
+
+    $(document).ready(function() {
+        {% if not form.is_bound %}
+        preencherCamposComRegistro();
+        preencherDataAtualSeVazia();
+        {% endif %}
+
+        // Inicializa o select2 para busca dentro dos dropdowns
+        $('.select2-field').select2({
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Nenhum resultado encontrado";
+                }
+            }
+        });
+
+        // Lógica de cascata (Filtros Dependentes)
+        const rfSubSelect = $('#id_rf_sub');
+        const unidCoordSelect = $('#id_unidade_coordenacao');
+        
+        const gndSelect = $('#id_gnd');
+        const poSelect = $('#id_po');
+        const poGndSelect = $('#id_po_gnd');
+
+        // Backup das opções originais para poder restaurar
+        const originalUnidCoord = unidCoordSelect.find('option').clone();
+        const originalPoGnd = poGndSelect.find('option').clone();
+
+        function filterUnidCoord() {
+            const rfSubVal = rfSubSelect.val();
+            const currentVal = unidCoordSelect.val(); // Preserve current selection if possible
+            unidCoordSelect.empty().append(originalUnidCoord.clone());
+            
+            if (rfSubVal) {
+                let searchTerm = rfSubVal.replace('RF', '').trim();
+                unidCoordSelect.find('option').each(function() {
+                    let optVal = $(this).val();
+                    if (optVal && !optVal.includes(searchTerm) && !optVal.includes(rfSubVal)) {
+                        $(this).remove();
+                    }
+                });
+            }
+            const hasCurrentUnidCoord = unidCoordSelect.find('option').filter(function() {
+                return $(this).val() === currentVal;
+            }).length > 0;
+            if (hasCurrentUnidCoord) {
+                unidCoordSelect.val(currentVal);
+            }
+            unidCoordSelect.trigger('change.select2');
+        }
+
+        function filterPoGnd() {
+            const gndVal = gndSelect.val();
+            const poVal = poSelect.val();
+            const currentVal = poGndSelect.val(); // Preserve current selection if possible
+            poGndSelect.empty().append(originalPoGnd.clone());
+
+            poGndSelect.find('option').each(function() {
+                let optVal = $(this).val();
+                if (!optVal) return;
+
+                let keep = true;
+                if (gndVal && !optVal.toLowerCase().includes(gndVal.toLowerCase())) {
+                    keep = false;
+                }
+                if (poVal && !optVal.toLowerCase().includes(poVal.toLowerCase())) {
+                    keep = false;
+                }
+
+                if (!keep) {
+                    $(this).remove();
+                }
+            });
+            const hasCurrentPoGnd = poGndSelect.find('option').filter(function() {
+                return $(this).val() === currentVal;
+            }).length > 0;
+            if (hasCurrentPoGnd) {
+                poGndSelect.val(currentVal);
+            }
+            poGndSelect.trigger('change.select2');
+        }
+
+        rfSubSelect.on('change', filterUnidCoord);
+        gndSelect.on('change', filterPoGnd);
+        poSelect.on('change', filterPoGnd);
+        
+        // Trigger initial filtering for edit mode
+        filterUnidCoord();
+        filterPoGnd();
+
+        {% if not form.is_bound %}
+        // Garante que os selects dependentes mantenham o valor salvo após os filtros iniciais.
+        ensureSelectedOption(unidCoordSelect, registroInicial.unidade_coordenacao);
+        ensureSelectedOption(poGndSelect, registroInicial.po_gnd);
+        unidCoordSelect.val(registroInicial.unidade_coordenacao).trigger('change.select2');
+        poGndSelect.val(registroInicial.po_gnd).trigger('change.select2');
+        {% endif %}
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
+        preencherDataAtualSeVazia();
+
         const ro1Input = document.getElementById('id_ro_1');
         const lme1Input = document.getElementById('id_lme_1');
         const alertBox = document.getElementById('valores-alert');
