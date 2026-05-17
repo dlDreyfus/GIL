@@ -182,14 +182,45 @@
         const alertBox = document.getElementById('valores-alert');
 
         if (ro1Input && lme1Input && alertBox) {
+
+            // Atualiza o atributo min do LME-1 sempre que RO-1 mudar
+            function atualizarMinLme() {
+                const valRo = parseFloat(ro1Input.value);
+                if (!isNaN(valRo)) {
+                    lme1Input.setAttribute('min', valRo);
+                } else {
+                    lme1Input.removeAttribute('min');
+                }
+            }
+
             function checkValues() {
-                const valRo = ro1Input.value;
-                const valLme = lme1Input.value;
+                const valRo = ro1Input.value.trim();
+                const valLme = lme1Input.value.trim();
 
                 if (!valRo && !valLme) {
                     alertBox.style.display = 'none';
+                    lme1Input.setCustomValidity('');
                     return;
                 }
+
+                const numRo  = parseFloat(valRo);
+                const numLme = parseFloat(valLme);
+
+                // Validação principal: LME-1 não pode ser menor que RO-1
+                if (valRo && valLme && !isNaN(numRo) && !isNaN(numLme) && numLme < numRo) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.backgroundColor = '#f8d7da';
+                    alertBox.style.color = '#721c24';
+                    alertBox.style.border = '1px solid #f5c6cb';
+                    alertBox.textContent = '⚠️ LME-1 não pode ser menor que RO-1. Corrija o valor antes de salvar.';
+                    lme1Input.style.borderColor = '#dc3545';
+                    lme1Input.setCustomValidity('LME-1 não pode ser menor que RO-1.');
+                    return;
+                }
+
+                // Valores válidos: reseta estilo e mensagem de erro
+                lme1Input.style.borderColor = '';
+                lme1Input.setCustomValidity('');
 
                 alertBox.style.display = 'block';
                 if (valRo === valLme) {
@@ -206,11 +237,24 @@
             }
 
             ro1Input.addEventListener('input', function() {
-                lme1Input.value = this.value;
+                atualizarMinLme();
                 checkValues();
             });
 
             lme1Input.addEventListener('input', checkValues);
+
+            // Bloqueia o submit se LME-1 < RO-1
+            lme1Input.closest('form').addEventListener('submit', function(e) {
+                const numRo  = parseFloat(ro1Input.value);
+                const numLme = parseFloat(lme1Input.value);
+                if (!isNaN(numRo) && !isNaN(numLme) && numLme < numRo) {
+                    e.preventDefault();
+                    checkValues();
+                    lme1Input.focus();
+                }
+            });
+
+            atualizarMinLme();
         }
     });
 </script>
