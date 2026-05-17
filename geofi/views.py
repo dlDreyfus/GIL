@@ -4,7 +4,7 @@ from django.core.paginator import Paginator
 from django.contrib import messages
 from .models import RegistroFinanceiro
 from django.db import transaction
-from .forms import RegistroFinanceiroForm
+from .forms import RegistroFinanceiroForm, FIELD_MAPPING, get_opcoes
 from decimal import Decimal
 import json
 import csv
@@ -213,3 +213,78 @@ def apaga_registro_view(request, id):
         field.widget.attrs['disabled'] = True
     
     return render(request, 'geofi/apagaRegistroBaseRo.html', {'form': form, 'registro': registro})
+
+def atualiza_campo_view(request, id):
+    """Endpoint AJAX para atualizar um campo individual de um RegistroFinanceiro."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'erro': 'Método não permitido.'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'erro': 'JSON inválido.'}, status=400)
+
+    campo = data.get('campo')
+    valor = data.get('valor')
+
+    # Campos que podem ser editados inline (exclui id, pk, linha_id)
+    campos_permitidos = [
+        'data', 'mes', 'periodo', 'arquivo', 'rf_sub', 'unidade_coordenacao',
+        'grupos', 'despesa_gerencial', 'iniciativa', 'gnd', 'tipo_despesa',
+        'ro_1', 'lme_1', 'po', 'acao', 'po_gnd',
+    ]
+
+    if campo not in campos_permitidos:
+        return JsonResponse({'ok': False, 'erro': f'Campo "{campo}" não é editável.'}, status=400)
+
+    registro = get_object_or_404(RegistroFinanceiro, id=id)
+
+    # Converte o valor conforme o tipo do campo no model
+    field = RegistroFinanceiro._meta.get_field(campo)
+
+    try:
+        if field.get_internal_type() == 'DecimalField':
+            if valor is None or str(valor).strip() == '':
+                valor = None
+            else:
+                # Aceita tanto formato BR (1.234,56) quanto padrão (1234.56)
+                cleaned = str(valor).replace('R$', '').replace(' ', '').strip()
+                if ',' in cleaned:
+                    cleaned = cleaned.replace('.', '').replace(',', '.')
+                valor = Decimal(cleaned)
+        elif field.get_internal_type() == 'DateField':
+            if valor is None or str(valor).strip() == '':
+                valor = None
+            else:
+                valor_str = str(valor).strip()
+                # Aceita DD/MM/YYYY ou YYYY-MM-DD
+                if '/' in valor_str:
+                    valor = datetime.strptime(valor_str, '%d/%m/%Y').date()
+                else:
+                    valor = datetime.strptime(valor_str[:10], '%Y-%m-%d').date()
+    except (ValueError, Exception) as e:
+        return JsonResponse({'ok': False, 'erro': f'Valor inválido para o campo "{campo}": {str(e)}'}, status=400)
+
+    setattr(registro, campo, valor)
+    registro.save(update_fields=[campo])
+
+    # Retorna o valor formatado para exibir na célula
+    valor_display = valor
+    if field.get_internal_type() == 'DecimalField' and valor is not None:
+        from django.contrib.humanize.templatetags.humanize import intcomma
+        valor_display = f'R$ {intcomma(valor)}'
+    elif field.get_internal_type() == 'DateField' and valor is not None:
+        valor_display = valor.strftime('%d/%m/%Y')
+    else:
+        valor_display = str(valor) if valor is not None else ''
+
+    return JsonResponse({'ok': True, 'valor_display': valor_display})
+
+def opcoes_campo_view(request, campo):
+    """Retorna as opções de dropdown para um campo específico (consulta db.filtrosRO)."""
+    if campo not in FIELD_MAPPING:
+        return JsonResponse({'opcoes': []}, status=400)
+    opcoes_raw = get_opcoes(FIELD_MAPPING[campo])
+    # Remove a opção vazia 'Selecione' — no inline edit não faz sentido
+    opcoes = [val for val, _ in opcoes_raw if val != '']
+    return JsonResponse({'opcoes': opcoes})

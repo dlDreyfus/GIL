@@ -54,27 +54,27 @@
                     </thead>
                     <tbody>
                         {% for r in page_obj %}
-                        <tr style="border-bottom: 1px solid #eee; background-color: {% cycle '#ffffff' '#f8f8f8' %};">
+                        <tr data-id="{{ r.id }}" style="border-bottom: 1px solid #eee; background-color: {% cycle '#ffffff' '#f8f8f8' %};">
                             <td style="padding: 6px 4px; text-align: center;">{{ r.linha_id|default:"-" }}</td>
-                            <td style="padding: 6px 4px;">{{ r.data|date:"d/m/Y" }}</td>
-                            <td style="padding: 6px 4px;">{{ r.mes }}</td>
-                            <td style="padding: 6px 4px;">{{ r.arquivo }}</td>
-                            <td style="padding: 6px 4px;">{{ r.rf_sub }}</td>
-                            <td style="padding: 6px 4px;">{{ r.unidade_coordenacao }}</td>
-                            <td style="padding: 6px 4px;">{{ r.grupos }}</td>
-                            <td style="padding: 6px 4px;">{{ r.despesa_gerencial }}</td>
-                            <td style="padding: 6px 4px;">{{ r.iniciativa }}</td>
-                            <td style="padding: 6px 4px;">{{ r.gnd }}</td>
-                            <td style="padding: 6px 4px;">{{ r.tipo_despesa }}</td>
-                            <td style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.ro_1 < 0 %}color: red;{% endif %}">
+                            <td class="editavel" data-campo="data" data-raw="{{ r.data|date:'Y-m-d' }}" style="padding: 6px 4px;">{{ r.data|date:"d/m/Y" }}</td>
+                            <td class="editavel" data-campo="mes" style="padding: 6px 4px;">{{ r.mes }}</td>
+                            <td class="editavel" data-campo="arquivo" style="padding: 6px 4px;">{{ r.arquivo }}</td>
+                            <td class="editavel" data-campo="rf_sub" style="padding: 6px 4px;">{{ r.rf_sub }}</td>
+                            <td class="editavel" data-campo="unidade_coordenacao" style="padding: 6px 4px;">{{ r.unidade_coordenacao }}</td>
+                            <td class="editavel" data-campo="grupos" style="padding: 6px 4px;">{{ r.grupos }}</td>
+                            <td class="editavel" data-campo="despesa_gerencial" style="padding: 6px 4px;">{{ r.despesa_gerencial }}</td>
+                            <td class="editavel" data-campo="iniciativa" style="padding: 6px 4px;">{{ r.iniciativa }}</td>
+                            <td class="editavel" data-campo="gnd" style="padding: 6px 4px;">{{ r.gnd }}</td>
+                            <td class="editavel" data-campo="tipo_despesa" style="padding: 6px 4px;">{{ r.tipo_despesa }}</td>
+                            <td class="editavel" data-campo="ro_1" data-raw="{{ r.ro_1|default_if_none:'' }}" style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.ro_1 < 0 %}color: red;{% endif %}">
                                 {% if r.ro_1 is not None %}R$ {{ r.ro_1|intcomma }}{% endif %}
                             </td>
-                            <td style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.lme_1 < 0 %}color: red;{% endif %}">
+                            <td class="editavel" data-campo="lme_1" data-raw="{{ r.lme_1|default_if_none:'' }}" style="padding: 6px 4px; text-align: right; white-space: nowrap; {% if r.lme_1 < 0 %}color: red;{% endif %}">
                                 {% if r.lme_1 is not None %}R$ {{ r.lme_1|intcomma }}{% endif %}
                             </td>
-                            <td style="padding: 6px 4px;">{{ r.po }}</td>
-                            <td style="padding: 6px 4px;">{{ r.acao }}</td>
-                            <td style="padding: 6px 4px;">{{ r.po_gnd }}</td>
+                            <td class="editavel" data-campo="po" style="padding: 6px 4px;">{{ r.po }}</td>
+                            <td class="editavel" data-campo="acao" style="padding: 6px 4px;">{{ r.acao }}</td>
+                            <td class="editavel" data-campo="po_gnd" style="padding: 6px 4px;">{{ r.po_gnd }}</td>
                             <td style="padding: 6px 4px; text-align: center;">
                                 <a href="{% url 'geofi:edita_registro' r.id %}" style="text-decoration: none; font-size: 1rem;" title="Editar Registro">&#9999;&#65039;</a>
                             </td>
@@ -133,5 +133,177 @@
                     {% endif %}
                 </span>
             </div>
-        </div>
+    </div>
+
+<style>
+    .editavel { cursor: cell; transition: background-color 0.2s; }
+    .editavel:hover { background-color: #e8f0fe !important; }
+    .editavel.editando { padding: 2px !important; }
+    .editavel.editando input, .editavel.editando select {
+        width: 100%; box-sizing: border-box; padding: 4px 6px;
+        border: 2px solid #1351b4; border-radius: 4px; font-size: 0.6rem;
+        font-family: inherit; outline: none; background: #fff;
+    }
+    .editavel.salvo { animation: flash-verde 0.6s; }
+    .editavel.erro { animation: shake 0.4s; }
+    @keyframes flash-verde { 0%{background:#c8e6c9} 100%{background:transparent} }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token }}';
+
+    // Campos que devem usar dropdown (mesmo mapeamento do forms.py FIELD_MAPPING)
+    const camposDropdown = [
+        'mes', 'rf_sub', 'unidade_coordenacao', 'grupos', 'despesa_gerencial',
+        'iniciativa', 'gnd', 'tipo_despesa', 'po', 'acao', 'po_gnd'
+    ];
+
+    // Cache das opções já carregadas para evitar fetch repetido
+    const cacheOpcoes = {};
+
+    function salvarCampo(td, campo, recordId, novoValor, valorOriginal) {
+        fetch('/geofi/api/atualizar-campo/' + recordId + '/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({campo: campo, valor: novoValor})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            td.classList.remove('editando');
+            if (data.ok) {
+                td.textContent = data.valor_display;
+                if (td.dataset.raw !== undefined) td.dataset.raw = novoValor;
+                td.classList.add('salvo');
+                setTimeout(function() { td.classList.remove('salvo'); }, 700);
+            } else {
+                td.textContent = valorOriginal;
+                td.classList.add('erro');
+                setTimeout(function() { td.classList.remove('erro'); }, 500);
+                alert('Erro: ' + data.erro);
+            }
+        })
+        .catch(function() {
+            td.classList.remove('editando');
+            td.textContent = valorOriginal;
+            alert('Erro de conexão ao salvar.');
+        });
+    }
+
+    function criarDropdown(td, campo, recordId, valorOriginal, opcoes) {
+        td.classList.add('editando');
+        var select = document.createElement('select');
+
+        // Opção vazia
+        var optVazio = document.createElement('option');
+        optVazio.value = '';
+        optVazio.textContent = '— Selecione —';
+        select.appendChild(optVazio);
+
+        opcoes.forEach(function(op) {
+            var opt = document.createElement('option');
+            opt.value = op;
+            opt.textContent = op;
+            if (op === valorOriginal) opt.selected = true;
+            select.appendChild(opt);
+        });
+
+        td.textContent = '';
+        td.appendChild(select);
+        select.focus();
+
+        var saved = false;
+
+        select.addEventListener('change', function() {
+            if (saved) return;
+            saved = true;
+            salvarCampo(td, campo, recordId, select.value, valorOriginal);
+        });
+
+        select.addEventListener('blur', function() {
+            if (saved) return;
+            saved = true;
+            td.classList.remove('editando');
+            td.textContent = valorOriginal;
+        });
+
+        select.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (saved) return;
+                saved = true;
+                td.classList.remove('editando');
+                td.textContent = valorOriginal;
+            }
+        });
+    }
+
+    document.querySelectorAll('td.editavel').forEach(function(td) {
+        td.addEventListener('dblclick', function() {
+            if (td.classList.contains('editando')) return;
+
+            var campo = td.dataset.campo;
+            var row = td.closest('tr');
+            var recordId = row.dataset.id;
+            var valorOriginal = td.textContent.trim();
+
+            if (camposDropdown.indexOf(campo) !== -1) {
+                // Campo dropdown: buscar opções e renderizar <select>
+                if (cacheOpcoes[campo]) {
+                    criarDropdown(td, campo, recordId, valorOriginal, cacheOpcoes[campo]);
+                } else {
+                    td.classList.add('editando');
+                    td.textContent = 'Carregando...';
+                    fetch('/geofi/api/opcoes-campo/' + campo + '/')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            cacheOpcoes[campo] = data.opcoes;
+                            criarDropdown(td, campo, recordId, valorOriginal, data.opcoes);
+                        })
+                        .catch(function() {
+                            td.classList.remove('editando');
+                            td.textContent = valorOriginal;
+                            alert('Erro ao carregar opções.');
+                        });
+                }
+            } else {
+                // Campo texto/data/decimal: renderizar <input>
+                var valorInput = td.dataset.raw !== undefined && td.dataset.raw !== '' ? td.dataset.raw : valorOriginal;
+                td.classList.add('editando');
+                var inputType = campo === 'data' ? 'date' : 'text';
+                var input = document.createElement('input');
+                input.type = inputType;
+                input.value = valorInput;
+                td.textContent = '';
+                td.appendChild(input);
+                input.focus();
+                input.select();
+
+                var saved = false;
+
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+                    if (e.key === 'Escape') { e.preventDefault(); doCancel(); }
+                });
+                input.addEventListener('blur', doSave);
+
+                function doSave() {
+                    if (saved) return;
+                    saved = true;
+                    salvarCampo(td, campo, recordId, input.value, valorOriginal);
+                }
+
+                function doCancel() {
+                    if (saved) return;
+                    saved = true;
+                    td.classList.remove('editando');
+                    td.textContent = valorOriginal;
+                }
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}

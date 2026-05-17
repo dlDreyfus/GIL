@@ -6,6 +6,7 @@ import os
 from django.conf import settings
 
 FIELD_MAPPING = {
+    'mes': 'MES',
     'rf_sub': 'RF_SUB',
     'unidade_coordenacao': 'UNID_COORD',
     'grupos': 'GRUPO',
