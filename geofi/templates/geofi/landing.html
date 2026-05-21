@@ -163,6 +163,47 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache das opções já carregadas para evitar fetch repetido
     const cacheOpcoes = {};
 
+    // Campos que fazem parte da cascata (em ordem)
+    const cascadeChain = [
+        'rf_sub', 'unidade_coordenacao', 'grupos',
+        'despesa_gerencial', 'iniciativa', 'gnd',
+        'tipo_despesa', 'po', 'acao', 'po_gnd'
+    ];
+
+    function getRowValues(row, exceptCampo) {
+        var vals = {};
+        cascadeChain.forEach(function(f) {
+            if (f === exceptCampo) return;
+            var td = row.querySelector('td[data-campo="' + f + '"]');
+            if (td) {
+                var v = td.textContent.trim();
+                if (v) vals[f] = v;
+            }
+        });
+        return vals;
+    }
+
+    function fetchCascadeOpcoes(row, campo, callback) {
+        var idx = cascadeChain.indexOf(campo);
+        if (idx === -1) { callback(null); return; }
+        // Envia os valores dos campos ANTERIORES na cadeia
+        var params = {};
+        cascadeChain.slice(0, idx).forEach(function(f) {
+            var td = row.querySelector('td[data-campo="' + f + '"]');
+            if (td) {
+                var v = td.textContent.trim();
+                if (v) params[f] = v;
+            }
+        });
+        var qs = Object.keys(params).map(function(k) {
+            return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+        }).join('&');
+        fetch('/geofi/api/filtros-cascata/' + (qs ? '?' + qs : ''))
+            .then(function(r) { return r.json(); })
+            .then(function(data) { callback(data[campo] || null); })
+            .catch(function() { callback(null); });
+    }
+
     function salvarCampo(td, campo, recordId, novoValor, valorOriginal) {
         fetch('/geofi/api/atualizar-campo/' + recordId + '/', {
             method: 'POST',
@@ -250,7 +291,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (camposDropdown.indexOf(campo) !== -1) {
                 // Campo dropdown: buscar opções e renderizar <select>
-                if (cacheOpcoes[campo]) {
+                if (campo === 'mes') {
+                    var meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                    criarDropdown(td, campo, recordId, valorOriginal, meses);
+                } else if (cascadeChain.indexOf(campo) !== -1) {
+                    // Campo da cascata: busca opções filtradas com base na linha atual
+                    td.classList.add('editando');
+                    td.textContent = 'Carregando...';
+                    fetchCascadeOpcoes(row, campo, function(opcoes) {
+                        if (!opcoes) {
+                            // fallback: lista completa
+                            fetch('/geofi/api/opcoes-campo/' + campo + '/')
+                                .then(function(r) { return r.json(); })
+                                .then(function(data) {
+                                    criarDropdown(td, campo, recordId, valorOriginal, data.opcoes);
+                                })
+                                .catch(function() {
+                                    td.classList.remove('editando');
+                                    td.textContent = valorOriginal;
+                                });
+                        } else {
+                            criarDropdown(td, campo, recordId, valorOriginal, opcoes);
+                        }
+                    });
+                } else if (cacheOpcoes[campo]) {
                     criarDropdown(td, campo, recordId, valorOriginal, cacheOpcoes[campo]);
                 } else {
                     td.classList.add('editando');

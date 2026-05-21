@@ -34,18 +34,18 @@
                         <!-- Campo Mês transformado em Dropdown com siglas -->
                         <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="select2-field form-control" style="padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%; background-color: #fcfcfc;">
                             <option value="">Selecione</option>
-                            <option value="JAN" {% if field.value == 'JAN' %}selected{% endif %}>JAN</option>
-                            <option value="FEV" {% if field.value == 'FEV' %}selected{% endif %}>FEV</option>
-                            <option value="MAR" {% if field.value == 'MAR' %}selected{% endif %}>MAR</option>
-                            <option value="ABR" {% if field.value == 'ABR' %}selected{% endif %}>ABR</option>
-                            <option value="MAI" {% if field.value == 'MAI' %}selected{% endif %}>MAI</option>
-                            <option value="JUN" {% if field.value == 'JUN' %}selected{% endif %}>JUN</option>
-                            <option value="JUL" {% if field.value == 'JUL' %}selected{% endif %}>JUL</option>
-                            <option value="AGO" {% if field.value == 'AGO' %}selected{% endif %}>AGO</option>
-                            <option value="SET" {% if field.value == 'SET' %}selected{% endif %}>SET</option>
-                            <option value="OUT" {% if field.value == 'OUT' %}selected{% endif %}>OUT</option>
-                            <option value="NOV" {% if field.value == 'NOV' %}selected{% endif %}>NOV</option>
-                            <option value="DEZ" {% if field.value == 'DEZ' %}selected{% endif %}>DEZ</option>
+                            <option value="Janeiro" {% if field.value == 'Janeiro' or field.value == 'JAN' %}selected{% endif %}>Janeiro</option>
+                            <option value="Fevereiro" {% if field.value == 'Fevereiro' or field.value == 'FEV' %}selected{% endif %}>Fevereiro</option>
+                            <option value="Março" {% if field.value == 'Março' or field.value == 'MAR' %}selected{% endif %}>Março</option>
+                            <option value="Abril" {% if field.value == 'Abril' or field.value == 'ABR' %}selected{% endif %}>Abril</option>
+                            <option value="Maio" {% if field.value == 'Maio' or field.value == 'MAI' %}selected{% endif %}>Maio</option>
+                            <option value="Junho" {% if field.value == 'Junho' or field.value == 'JUN' %}selected{% endif %}>Junho</option>
+                            <option value="Julho" {% if field.value == 'Julho' or field.value == 'JUL' %}selected{% endif %}>Julho</option>
+                            <option value="Agosto" {% if field.value == 'Agosto' or field.value == 'AGO' %}selected{% endif %}>Agosto</option>
+                            <option value="Setembro" {% if field.value == 'Setembro' or field.value == 'SET' %}selected{% endif %}>Setembro</option>
+                            <option value="Outubro" {% if field.value == 'Outubro' or field.value == 'OUT' %}selected{% endif %}>Outubro</option>
+                            <option value="Novembro" {% if field.value == 'Novembro' or field.value == 'NOV' %}selected{% endif %}>Novembro</option>
+                            <option value="Dezembro" {% if field.value == 'Dezembro' or field.value == 'DEZ' %}selected{% endif %}>Dezembro</option>
                         </select>
                     {% else %}
                         {{ field }}
@@ -152,96 +152,80 @@
         preencherDataAtualSeVazia();
         {% endif %}
 
-        // Inicializa o select2 para busca dentro dos dropdowns
         $('.select2-field').select2({
             width: '100%',
-            language: {
-                noResults: function() {
-                    return "Nenhum resultado encontrado";
-                }
-            }
+            language: { noResults: function() { return "Nenhum resultado encontrado"; } }
         });
 
-        // Lógica de cascata (Filtros Dependentes)
-        const rfSubSelect = $('#id_rf_sub');
-        const unidCoordSelect = $('#id_unidade_coordenacao');
-        
-        const gndSelect = $('#id_gnd');
-        const poSelect = $('#id_po');
-        const poGndSelect = $('#id_po_gnd');
+        // Cascata via tabela Registros do db.filtrosRO
+        const cascadeFields = [
+            'rf_sub', 'unidade_coordenacao', 'grupos',
+            'despesa_gerencial', 'iniciativa', 'gnd',
+            'tipo_despesa', 'po', 'acao', 'po_gnd'
+        ];
 
-        // Backup das opções originais para poder restaurar
-        const originalUnidCoord = unidCoordSelect.find('option').clone();
-        const originalPoGnd = poGndSelect.find('option').clone();
+        function getSelectEl(name) { return $('#id_' + name); }
 
-        function filterUnidCoord() {
-            const rfSubVal = rfSubSelect.val();
-            const currentVal = unidCoordSelect.val(); // Preserve current selection if possible
-            unidCoordSelect.empty().append(originalUnidCoord.clone());
-            
-            if (rfSubVal) {
-                let searchTerm = rfSubVal.replace('RF', '').trim();
-                unidCoordSelect.find('option').each(function() {
-                    let optVal = $(this).val();
-                    if (optVal && !optVal.includes(searchTerm) && !optVal.includes(rfSubVal)) {
-                        $(this).remove();
+        function rebuildSelect($sel, opcoes, forceVal) {
+            var prev = forceVal !== undefined ? forceVal : $sel.val();
+            $sel.empty().append('<option value="">Selecione</option>');
+            // garante que o valor atual sempre apareça como opção (registro existente)
+            if (prev && !opcoes.includes(prev)) opcoes = [prev].concat(opcoes);
+            opcoes.forEach(function(op) {
+                var $opt = $('<option>').val(op).text(op);
+                if (op === prev) $opt.prop('selected', true);
+                $sel.append($opt);
+            });
+            $sel.trigger('change.select2');
+        }
+
+        function atualizarCascataAPartirDe(changedField, forceVals) {
+            var idx = cascadeFields.indexOf(changedField);
+            if (idx === -1) return;
+
+            var params = {};
+            cascadeFields.forEach(function(f) {
+                var v = getSelectEl(f).val();
+                if (v) params[f] = v;
+            });
+
+            $.get('/geofi/api/filtros-cascata/', params, function(data) {
+                cascadeFields.slice(idx + 1).forEach(function(f) {
+                    if (data[f]) {
+                        var fv = forceVals ? forceVals[f] : undefined;
+                        rebuildSelect(getSelectEl(f), data[f], fv);
                     }
                 });
-            }
-            const hasCurrentUnidCoord = unidCoordSelect.find('option').filter(function() {
-                return $(this).val() === currentVal;
-            }).length > 0;
-            if (hasCurrentUnidCoord) {
-                unidCoordSelect.val(currentVal);
-            }
-            unidCoordSelect.trigger('change.select2');
-        }
-
-        function filterPoGnd() {
-            const gndVal = gndSelect.val();
-            const poVal = poSelect.val();
-            const currentVal = poGndSelect.val(); // Preserve current selection if possible
-            poGndSelect.empty().append(originalPoGnd.clone());
-
-            poGndSelect.find('option').each(function() {
-                let optVal = $(this).val();
-                if (!optVal) return;
-
-                let keep = true;
-                if (gndVal && !optVal.toLowerCase().includes(gndVal.toLowerCase())) {
-                    keep = false;
-                }
-                if (poVal && !optVal.toLowerCase().includes(poVal.toLowerCase())) {
-                    keep = false;
-                }
-
-                if (!keep) {
-                    $(this).remove();
-                }
             });
-            const hasCurrentPoGnd = poGndSelect.find('option').filter(function() {
-                return $(this).val() === currentVal;
-            }).length > 0;
-            if (hasCurrentPoGnd) {
-                poGndSelect.val(currentVal);
-            }
-            poGndSelect.trigger('change.select2');
         }
 
-        rfSubSelect.on('change', filterUnidCoord);
-        gndSelect.on('change', filterPoGnd);
-        poSelect.on('change', filterPoGnd);
-        
-        // Trigger initial filtering for edit mode
-        filterUnidCoord();
-        filterPoGnd();
+        // Liga eventos de change para cada campo da cascata
+        cascadeFields.forEach(function(f) {
+            getSelectEl(f).on('change', function() {
+                atualizarCascataAPartirDe(f);
+            });
+        });
 
         {% if not form.is_bound %}
-        // Garante que os selects dependentes mantenham o valor salvo após os filtros iniciais.
-        ensureSelectedOption(unidCoordSelect, registroInicial.unidade_coordenacao);
-        ensureSelectedOption(poGndSelect, registroInicial.po_gnd);
-        unidCoordSelect.val(registroInicial.unidade_coordenacao).trigger('change.select2');
-        poGndSelect.val(registroInicial.po_gnd).trigger('change.select2');
+        // Na abertura do formulário de edição, popula os dropdowns com as opções filtradas
+        // mantendo os valores salvos do registro.
+        var savedVals = {
+            rf_sub: registroInicial.rf_sub,
+            unidade_coordenacao: registroInicial.unidade_coordenacao,
+            grupos: registroInicial.grupos,
+            despesa_gerencial: registroInicial.despesa_gerencial,
+            iniciativa: registroInicial.iniciativa,
+            gnd: registroInicial.gnd,
+            tipo_despesa: registroInicial.tipo_despesa,
+            po: registroInicial.po,
+            acao: registroInicial.acao,
+            po_gnd: registroInicial.po_gnd
+        };
+        $.get('/geofi/api/filtros-cascata/', savedVals, function(data) {
+            cascadeFields.forEach(function(f) {
+                if (data[f]) rebuildSelect(getSelectEl(f), data[f], savedVals[f]);
+            });
+        });
         {% endif %}
     });
 

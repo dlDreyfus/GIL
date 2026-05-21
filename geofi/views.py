@@ -281,10 +281,65 @@ def atualiza_campo_view(request, id):
     return JsonResponse({'ok': True, 'valor_display': valor_display})
 
 def opcoes_campo_view(request, campo):
-    """Retorna as opções de dropdown para um campo específico (consulta db.filtrosRO)."""
+    """
+    Retorna as opções de dropdown para um campo específico (consulta db.filtrosRO).
+    """
     if campo not in FIELD_MAPPING:
         return JsonResponse({'opcoes': []}, status=400)
     opcoes_raw = get_opcoes(FIELD_MAPPING[campo])
     # Remove a opção vazia 'Selecione' — no inline edit não faz sentido
     opcoes = [val for val, _ in opcoes_raw if val != '']
     return JsonResponse({'opcoes': opcoes})
+
+
+def filtros_cascata_view(request):
+    """
+    Retorna opções filtradas em cascata para todos os campos dependentes,
+    consultando a tabela Registros do db.filtrosRO.
+    Parâmetros GET: rf_sub, unidade_coordenacao, grupos, despesa_gerencial,
+                    iniciativa, gnd, tipo_despesa, po, acao
+    """
+    import sqlite3
+
+    cascade_chain = [
+        ('rf_sub',              'RF_SUB'),
+        ('unidade_coordenacao', 'UNID_COORD'),
+        ('grupos',              'GRUPO'),
+        ('despesa_gerencial',   'DESP_GERENCIAL'),
+        ('iniciativa',          'INICIATIVA'),
+        ('gnd',                 'GND'),
+        ('tipo_despesa',        'TIPO_DESPESA'),
+        ('po',                  'PO'),
+        ('acao',                'ACAO'),
+        ('po_gnd',              'PO_GND'),
+    ]
+
+    db_path = os.path.join(settings.BASE_DIR, 'db.filtrosRO')
+    result = {}
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        for i, (form_name, db_col) in enumerate(cascade_chain):
+            conditions = []
+            params = []
+            for prev_form, prev_db in cascade_chain[:i]:
+                val = request.GET.get(prev_form, '').strip()
+                if val:
+                    conditions.append(f'"{prev_db}" = ?')
+                    params.append(val)
+
+            query = f'SELECT DISTINCT "{db_col}" FROM Registros'
+            if conditions:
+                query += ' WHERE ' + ' AND '.join(conditions)
+            query += f' ORDER BY "{db_col}"'
+
+            cursor.execute(query, params)
+            result[form_name] = [row[0] for row in cursor.fetchall() if row[0]]
+
+        conn.close()
+    except Exception as e:
+        result['erro'] = str(e)
+
+    return JsonResponse(result)

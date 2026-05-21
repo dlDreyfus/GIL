@@ -22,21 +22,21 @@
                     <input type="text" id="{{ field.id_for_label }}" value="{{ proximo_id|default:'Gerado Automaticamente' }}" disabled 
                            style="background-color: #eee; color: #666; cursor: not-allowed; font-style: italic; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%;">
                 {% elif field.name == 'mes' or field.label == 'Mês' %}
-                    <!-- Campo Mês transformado em Dropdown com siglas -->
+                    <!-- Campo Mês transformado em Dropdown com nomes completos -->
                     <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="select2-field form-control" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; width: 100%; background-color: #fff;">
                         <option value="">Selecione</option>
-                        <option value="JAN" {% if field.value == 'JAN' %}selected{% endif %}>JAN</option>
-                        <option value="FEV" {% if field.value == 'FEV' %}selected{% endif %}>FEV</option>
-                        <option value="MAR" {% if field.value == 'MAR' %}selected{% endif %}>MAR</option>
-                        <option value="ABR" {% if field.value == 'ABR' %}selected{% endif %}>ABR</option>
-                        <option value="MAI" {% if field.value == 'MAI' %}selected{% endif %}>MAI</option>
-                        <option value="JUN" {% if field.value == 'JUN' %}selected{% endif %}>JUN</option>
-                        <option value="JUL" {% if field.value == 'JUL' %}selected{% endif %}>JUL</option>
-                        <option value="AGO" {% if field.value == 'AGO' %}selected{% endif %}>AGO</option>
-                        <option value="SET" {% if field.value == 'SET' %}selected{% endif %}>SET</option>
-                        <option value="OUT" {% if field.value == 'OUT' %}selected{% endif %}>OUT</option>
-                        <option value="NOV" {% if field.value == 'NOV' %}selected{% endif %}>NOV</option>
-                        <option value="DEZ" {% if field.value == 'DEZ' %}selected{% endif %}>DEZ</option>
+                        <option value="Janeiro"  {% if field.value == 'Janeiro'  or field.value == 'JAN' %}selected{% endif %}>Janeiro</option>
+                        <option value="Fevereiro" {% if field.value == 'Fevereiro' or field.value == 'FEV' %}selected{% endif %}>Fevereiro</option>
+                        <option value="Março"    {% if field.value == 'Março'    or field.value == 'MAR' %}selected{% endif %}>Março</option>
+                        <option value="Abril"    {% if field.value == 'Abril'    or field.value == 'ABR' %}selected{% endif %}>Abril</option>
+                        <option value="Maio"     {% if field.value == 'Maio'     or field.value == 'MAI' %}selected{% endif %}>Maio</option>
+                        <option value="Junho"    {% if field.value == 'Junho'    or field.value == 'JUN' %}selected{% endif %}>Junho</option>
+                        <option value="Julho"    {% if field.value == 'Julho'    or field.value == 'JUL' %}selected{% endif %}>Julho</option>
+                        <option value="Agosto"   {% if field.value == 'Agosto'   or field.value == 'AGO' %}selected{% endif %}>Agosto</option>
+                        <option value="Setembro" {% if field.value == 'Setembro' or field.value == 'SET' %}selected{% endif %}>Setembro</option>
+                        <option value="Outubro"  {% if field.value == 'Outubro'  or field.value == 'OUT' %}selected{% endif %}>Outubro</option>
+                        <option value="Novembro" {% if field.value == 'Novembro' or field.value == 'NOV' %}selected{% endif %}>Novembro</option>
+                        <option value="Dezembro" {% if field.value == 'Dezembro' or field.value == 'DEZ' %}selected{% endif %}>Dezembro</option>
                     </select>
                 {% else %}
                     {{ field }}
@@ -104,74 +104,60 @@
         dataInput.value = `${ano}-${mes}-${dia}`;
     }
 
+    // Campos da cascata em ordem
+    const cascadeFields = [
+        'rf_sub', 'unidade_coordenacao', 'grupos',
+        'despesa_gerencial', 'iniciativa', 'gnd',
+        'tipo_despesa', 'po', 'acao', 'po_gnd'
+    ];
+
+    function getSelectEl(name) { return $('#id_' + name); }
+
+    function rebuildSelect($sel, opcoes, currentVal) {
+        var prev = currentVal !== undefined ? currentVal : $sel.val();
+        $sel.empty().append('<option value="">Selecione</option>');
+        opcoes.forEach(function(op) {
+            var $opt = $('<option>').val(op).text(op);
+            if (op === prev) $opt.prop('selected', true);
+            $sel.append($opt);
+        });
+        // se o valor anterior não está mais disponível, limpa
+        if (prev && !opcoes.includes(prev)) $sel.val('');
+        $sel.trigger('change.select2');
+    }
+
+    function atualizarCascataAPartirDe(changedField) {
+        var idx = cascadeFields.indexOf(changedField);
+        if (idx === -1) return;
+
+        var params = {};
+        cascadeFields.forEach(function(f) {
+            var v = getSelectEl(f).val();
+            if (v) params[f] = v;
+        });
+
+        $.get('/geofi/api/filtros-cascata/', params, function(data) {
+            // Atualiza apenas os campos a partir do próximo na cadeia
+            cascadeFields.slice(idx + 1).forEach(function(f) {
+                if (data[f]) rebuildSelect(getSelectEl(f), data[f]);
+            });
+        });
+    }
+
     $(document).ready(function() {
         preencherDataAtualSeVazia();
 
-        // Inicializa o select2 para busca dentro dos dropdowns
         $('.select2-field').select2({
             width: '100%',
-            language: {
-                noResults: function() {
-                    return "Nenhum resultado encontrado";
-                }
-            }
+            language: { noResults: function() { return "Nenhum resultado encontrado"; } }
         });
 
-        // Lógica de cascata (Filtros Dependentes)
-        const rfSubSelect = $('#id_rf_sub');
-        const unidCoordSelect = $('#id_unidade_coordenacao');
-        
-        const gndSelect = $('#id_gnd');
-        const poSelect = $('#id_po');
-        const poGndSelect = $('#id_po_gnd');
-
-        // Backup das opções originais para poder restaurar
-        const originalUnidCoord = unidCoordSelect.find('option').clone();
-        const originalPoGnd = poGndSelect.find('option').clone();
-
-        function filterUnidCoord() {
-            const rfSubVal = rfSubSelect.val();
-            unidCoordSelect.empty().append(originalUnidCoord.clone());
-            
-            if (rfSubVal) {
-                let searchTerm = rfSubVal.replace('RF', '').trim();
-                unidCoordSelect.find('option').each(function() {
-                    let optVal = $(this).val();
-                    if (optVal && !optVal.includes(searchTerm) && !optVal.includes(rfSubVal)) {
-                        $(this).remove();
-                    }
-                });
-            }
-            unidCoordSelect.trigger('change');
-        }
-
-        function filterPoGnd() {
-            const gndVal = gndSelect.val();
-            const poVal = poSelect.val();
-            poGndSelect.empty().append(originalPoGnd.clone());
-
-            poGndSelect.find('option').each(function() {
-                let optVal = $(this).val();
-                if (!optVal) return;
-
-                let keep = true;
-                if (gndVal && !optVal.toLowerCase().includes(gndVal.toLowerCase())) {
-                    keep = false;
-                }
-                if (poVal && !optVal.toLowerCase().includes(poVal.toLowerCase())) {
-                    keep = false;
-                }
-
-                if (!keep) {
-                    $(this).remove();
-                }
+        // Liga o evento de change para cada campo da cascata
+        cascadeFields.forEach(function(f) {
+            getSelectEl(f).on('change', function() {
+                atualizarCascataAPartirDe(f);
             });
-            poGndSelect.trigger('change');
-        }
-
-        rfSubSelect.on('change', filterUnidCoord);
-        gndSelect.on('change', filterPoGnd);
-        poSelect.on('change', filterPoGnd);
+        });
     });
 
     document.addEventListener('DOMContentLoaded', function() {
