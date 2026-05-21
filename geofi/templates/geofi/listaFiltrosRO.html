@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Filtros RO{% endblock %}
+
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<div style="padding: 20px 45px;">
+
+    {% if messages %}
+        <div style="margin-bottom: 20px;">
+            {% for message in messages %}
+                <div style="padding: 12px; border-radius: 4px; margin-bottom: 5px; font-weight: 600; {% if message.tags == 'error' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if erro %}
+        <div style="padding: 12px; border-radius: 4px; margin-bottom: 20px; font-weight: 600; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;">
+            Erro ao acessar db.filtrosRO: {{ erro }}
+        </div>
+    {% endif %}
+
+    <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: var(--color-primary-dark); margin: 0;">Filtros RO</h2>
+            <div style="display: flex; gap: 10px;">
+                <a href="{% url 'geofi:landing' %}" class="br-button secondary" style="text-decoration: none;">Voltar</a>
+                <a href="{% url 'geofi:filtros_ro_novo' %}" class="br-button secondary" style="text-decoration: none;">Novo Registro - Filtros</a>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.6rem;">
+                <thead style="background-color: var(--color-gray-light); color: var(--color-primary-dark);">
+                    <tr>
+                        <th style="padding: 5px 4px; text-align: center; border-bottom: 1px solid #ddd; width: 50px;">#</th>
+                        {% for label in cabecalhos %}
+                        <th style="padding: 5px 4px; text-align: center; border-bottom: 1px solid #ddd;">{{ label }}</th>
+                        {% endfor %}
+                        <th style="padding: 5px 4px; text-align: center; border-bottom: 1px solid #ddd; width: 40px;">Editar</th>
+                        <th style="padding: 5px 4px; text-align: center; border-bottom: 1px solid #ddd; width: 40px;">Apagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in page_obj %}
+                    <tr style="border-bottom: 1px solid #eee; background-color: {% cycle '#ffffff' '#f8f8f8' %};">
+                        <td style="padding: 6px 4px; text-align: center;">{{ r.rowid }}</td>
+                        {% for val in r.valores %}
+                        <td style="padding: 6px 4px;">{{ val|default:"-" }}</td>
+                        {% endfor %}
+                        <td style="padding: 6px 4px; text-align: center;">
+                            <a href="{% url 'geofi:filtros_ro_edita' r.rowid %}" style="text-decoration: none; font-size: 1rem;" title="Editar">&#9999;&#65039;</a>
+                        </td>
+                        <td style="padding: 6px 4px; text-align: center;">
+                            <a href="{% url 'geofi:filtros_ro_apaga' r.rowid %}" style="text-decoration: none; font-size: 1rem;" title="Apagar">&#128465;&#65039;</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ cabecalhos|length|add:3 }}" style="padding: 20px; text-align: center; color: #666;">Nenhum registro encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Controles de Paginação -->
+        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif;">
+
+            <form method="get" action=".">
+                <label for="per_page" style="margin-right: 5px; color: #555;">Linhas por página:</label>
+                <select name="per_page" id="per_page" onchange="this.form.submit()" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="25"    {% if per_page == '25'    %}selected{% endif %}>25</option>
+                    <option value="50"    {% if per_page == '50'    %}selected{% endif %}>50</option>
+                    <option value="100"   {% if per_page == '100'   %}selected{% endif %}>100</option>
+                    <option value="todos" {% if per_page == 'todos' %}selected{% endif %}>Todas</option>
+                </select>
+            </form>
+
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1&per_page={{ per_page }}" style="margin-right: 10px; text-decoration: none; color: var(--color-primary);">&laquo; Primeira</a>
+                    <a href="?page={{ page_obj.previous_page_number }}&per_page={{ per_page }}" style="margin-right: 10px; text-decoration: none; color: var(--color-primary);">Anterior</a>
+                {% endif %}
+
+                {% if page_obj.number %}
+                    <span style="color: #555;">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&per_page={{ per_page }}" style="margin-left: 10px; text-decoration: none; color: var(--color-primary);">Próxima</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}&per_page={{ per_page }}" style="margin-left: 10px; text-decoration: none; color: var(--color-primary);">Última &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}

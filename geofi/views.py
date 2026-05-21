@@ -357,6 +357,182 @@ def filtros_cascata_view(request):
     return JsonResponse(result)
 
 
+## ──────────────────────────────────────────────
+##  CRUD  db.filtrosRO
+## ──────────────────────────────────────────────
+
+_FILTROS_RO_COLS = [
+    # (form_name, db_col, label)
+    ('rf_sub',              'RF_SUB',        'RF-SUB'),
+    ('unidade_coordenacao', 'UNID_COORD',    'Unidade/Coord.'),
+    ('grupos',              'GRUPO',         'Grupos'),
+    ('despesa_gerencial',   'DESP_GERENCIAL','Despesa Gerencial'),
+    ('iniciativa',          'INICIATIVA',    'Iniciativa'),
+    ('gnd',                 'GND',           'GND'),
+    ('tipo_despesa',        'TIPO_DESPESA',  'Tipo de Despesa'),
+    ('po',                  'PO',            'PO'),
+    ('acao',                'ACAO',          'Ação'),
+    ('po_gnd',              'PO_GND',        'PO+GND'),
+]
+
+def _filtros_ro_path():
+    return os.path.join(settings.BASE_DIR, 'db.filtrosRO')
+
+def _build_form_data(cols, values):
+    """Retorna lista de (label, name, value) para uso direto nos templates."""
+    return [(c[2], c[0], values.get(c[0], '')) for c in cols]
+
+
+def filtros_ro_list_view(request):
+    import sqlite3
+    registros = []
+    erro = None
+    db_path = _filtros_ro_path()
+    db_cols = ', '.join(f'"{c[1]}"' for c in _FILTROS_RO_COLS)
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT rowid, {db_cols} FROM Registros ORDER BY rowid')
+        # Cada linha vira {'rowid': ..., 'valores': [...]} para uso seguro no template
+        registros = [
+            {'rowid': row[0], 'valores': list(row[1:])}
+            for row in cursor.fetchall()
+        ]
+        conn.close()
+    except Exception as e:
+        erro = str(e)
+
+    per_page = request.GET.get('per_page', '25')
+    if per_page != 'todos':
+        paginator = Paginator(registros, int(per_page))
+        page_obj = paginator.get_page(request.GET.get('page'))
+    else:
+        page_obj = registros
+
+    return render(request, 'geofi/listaFiltrosRO.html', {
+        'page_obj': page_obj,
+        'per_page': per_page,
+        'cabecalhos': [c[2] for c in _FILTROS_RO_COLS],
+        'erro': erro,
+    })
+
+
+def filtros_ro_novo_view(request):
+    import sqlite3
+    cols = _FILTROS_RO_COLS
+    db_cols = ', '.join(f'"{c[1]}"' for c in cols)
+    placeholders = ', '.join('?' for _ in cols)
+    values = {c[0]: '' for c in cols}
+
+    if request.method == 'POST':
+        values = {c[0]: request.POST.get(c[0], '').strip() for c in cols}
+        try:
+            conn = sqlite3.connect(_filtros_ro_path())
+            cursor = conn.cursor()
+            cursor.execute(
+                f'INSERT INTO Registros ({db_cols}) VALUES ({placeholders})',
+                [values[c[0]] for c in cols]
+            )
+            conn.commit()
+            conn.close()
+            messages.success(request, 'Registro adicionado com sucesso!')
+            return redirect('geofi:filtros_ro_list')
+        except Exception as e:
+            messages.error(request, f'Erro ao salvar: {e}')
+
+    return render(request, 'geofi/novoFiltrosRO.html', {
+        'form_data': _build_form_data(cols, values),
+    })
+
+
+def filtros_ro_edita_view(request, rowid):
+    import sqlite3
+    cols = _FILTROS_RO_COLS
+    db_cols_select = ', '.join(f'"{c[1]}"' for c in cols)
+    db_path = _filtros_ro_path()
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT rowid, {db_cols_select} FROM Registros WHERE rowid = ?', [rowid])
+        row = cursor.fetchone()
+        conn.close()
+    except Exception as e:
+        messages.error(request, f'Erro ao buscar registro: {e}')
+        return redirect('geofi:filtros_ro_list')
+
+    if not row:
+        messages.error(request, 'Registro não encontrado.')
+        return redirect('geofi:filtros_ro_list')
+
+    values = dict(zip([c[0] for c in cols], row[1:]))
+
+    if request.method == 'POST':
+        values = {c[0]: request.POST.get(c[0], '').strip() for c in cols}
+        set_clause = ', '.join(f'"{c[1]}" = ?' for c in cols)
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                f'UPDATE Registros SET {set_clause} WHERE rowid = ?',
+                [values[c[0]] for c in cols] + [rowid]
+            )
+            conn.commit()
+            conn.close()
+            messages.success(request, 'Registro atualizado com sucesso!')
+            return redirect('geofi:filtros_ro_list')
+        except Exception as e:
+            messages.error(request, f'Erro ao salvar: {e}')
+
+    return render(request, 'geofi/editaFiltrosRO.html', {
+        'form_data': _build_form_data(cols, values),
+        'rowid': rowid,
+    })
+
+
+def filtros_ro_apaga_view(request, rowid):
+    import sqlite3
+    cols = _FILTROS_RO_COLS
+    db_cols_select = ', '.join(f'"{c[1]}"' for c in cols)
+    db_path = _filtros_ro_path()
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT rowid, {db_cols_select} FROM Registros WHERE rowid = ?', [rowid])
+        row = cursor.fetchone()
+        conn.close()
+    except Exception as e:
+        messages.error(request, f'Erro ao buscar registro: {e}')
+        return redirect('geofi:filtros_ro_list')
+
+    if not row:
+        messages.error(request, 'Registro não encontrado.')
+        return redirect('geofi:filtros_ro_list')
+
+    values = dict(zip([c[0] for c in cols], row[1:]))
+
+    if request.method == 'POST':
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM Registros WHERE rowid = ?', [rowid])
+            conn.commit()
+            conn.close()
+            messages.success(request, 'Registro excluído com sucesso!')
+            return redirect('geofi:filtros_ro_list')
+        except Exception as e:
+            messages.error(request, f'Erro ao excluir: {e}')
+
+    return render(request, 'geofi/apagaFiltrosRO.html', {
+        'form_data': _build_form_data(cols, values),
+        'rowid': rowid,
+    })
+
+
+## ──────────────────────────────────────────────
+
 def auto_fill_cascata_view(request):
     """
     A partir do campo indicado em `changed_field`, retorna para cada campo
