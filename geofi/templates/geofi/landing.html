@@ -154,7 +154,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token }}';
 
-    // Campos que devem usar dropdown (mesmo mapeamento do forms.py FIELD_MAPPING)
+    // Campos que devem usar dropdown
     const camposDropdown = [
         'mes', 'rf_sub', 'unidade_coordenacao', 'grupos', 'despesa_gerencial',
         'iniciativa', 'gnd', 'tipo_despesa', 'po', 'acao', 'po_gnd'
@@ -163,10 +163,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache das opções já carregadas para evitar fetch repetido
     const cacheOpcoes = {};
 
-    // Campos que fazem parte da cascata (em ordem)
+    // Campos que fazem parte da cascata (em ordem, a partir de Grupos)
+    // rf_sub e unidade_coordenacao NÃO participam: carregam DISTINCT sem filtro via fallback
     const cascadeChain = [
-        'rf_sub', 'unidade_coordenacao', 'grupos',
-        'despesa_gerencial', 'iniciativa', 'gnd',
+        'grupos', 'despesa_gerencial', 'iniciativa', 'gnd',
         'tipo_despesa', 'po', 'acao', 'po_gnd'
     ];
 

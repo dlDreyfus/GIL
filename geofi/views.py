@@ -8,6 +8,8 @@ from .forms import RegistroFinanceiroForm, FIELD_MAPPING, get_opcoes
 from decimal import Decimal
 import json
 import csv
+import os
+from django.conf import settings
 from django.db.models import Max, IntegerField
 from django.db.models.functions import Cast
 from datetime import datetime
@@ -294,16 +296,18 @@ def opcoes_campo_view(request, campo):
 
 def filtros_cascata_view(request):
     """
-    Retorna opções filtradas em cascata para todos os campos dependentes,
-    consultando a tabela Registros do db.filtrosRO.
-    Parâmetros GET: rf_sub, unidade_coordenacao, grupos, despesa_gerencial,
-                    iniciativa, gnd, tipo_despesa, po, acao
+    Retorna opções para todos os campos de seleção consultando db.filtrosRO.
+    - rf_sub e unidade_coordenacao: DISTINCT sem filtro (não participam da cascata).
+    - grupos em diante: filtros em cascata, cada campo filtrado pelos anteriores.
     """
     import sqlite3
 
-    cascade_chain = [
-        ('rf_sub',              'RF_SUB'),
+    standalone = [
+        ('rf_sub', 'RF_SUB'),
         ('unidade_coordenacao', 'UNID_COORD'),
+    ]
+
+    cascade_chain = [
         ('grupos',              'GRUPO'),
         ('despesa_gerencial',   'DESP_GERENCIAL'),
         ('iniciativa',          'INICIATIVA'),
@@ -321,6 +325,14 @@ def filtros_cascata_view(request):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
+        for form_name, db_col in standalone:
+            cursor.execute(
+                f'SELECT DISTINCT "{db_col}" FROM Registros '
+                f'WHERE "{db_col}" IS NOT NULL AND "{db_col}" != "" '
+                f'ORDER BY "{db_col}"'
+            )
+            result[form_name] = [row[0] for row in cursor.fetchall() if row[0]]
+
         for i, (form_name, db_col) in enumerate(cascade_chain):
             conditions = []
             params = []
@@ -337,6 +349,81 @@ def filtros_cascata_view(request):
 
             cursor.execute(query, params)
             result[form_name] = [row[0] for row in cursor.fetchall() if row[0]]
+
+        conn.close()
+    except Exception as e:
+        result['erro'] = str(e)
+
+    return JsonResponse(result)
+
+
+def auto_fill_cascata_view(request):
+    """
+    A partir do campo indicado em `changed_field`, retorna para cada campo
+    seguinte na cadeia: a lista de opções (opcoes) e o primeiro valor disponível
+    (valor) como sugestão de auto-preenchimento.
+
+    Cada valor auto-selecionado é usado como filtro para os campos subsequentes,
+    garantindo que a cascata seja calculada corretamente de ponta a ponta.
+    """
+    import sqlite3
+
+    cascade_chain = [
+        ('grupos',              'GRUPO'),
+        ('despesa_gerencial',   'DESP_GERENCIAL'),
+        ('iniciativa',          'INICIATIVA'),
+        ('gnd',                 'GND'),
+        ('tipo_despesa',        'TIPO_DESPESA'),
+        ('po',                  'PO'),
+        ('acao',                'ACAO'),
+        ('po_gnd',              'PO_GND'),
+    ]
+
+    changed_field = request.GET.get('changed_field', '').strip()
+    start_idx = next((i for i, (f, _) in enumerate(cascade_chain) if f == changed_field), -1)
+    if start_idx == -1:
+        return JsonResponse({'erro': 'Campo inválido'}, status=400)
+
+    # Coleta os valores atuais dos campos até e incluindo o campo alterado
+    current_vals = {}
+    for form_name, _ in cascade_chain[:start_idx + 1]:
+        val = request.GET.get(form_name, '').strip()
+        if val:
+            current_vals[form_name] = val
+
+    db_path = os.path.join(settings.BASE_DIR, 'db.filtrosRO')
+    result = {}
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        for i, (form_name, db_col) in enumerate(cascade_chain):
+            if i <= start_idx:
+                continue
+
+            conditions = []
+            params = []
+            for j, (prev_form, prev_db) in enumerate(cascade_chain[:i]):
+                val = current_vals.get(prev_form, '')
+                if val:
+                    conditions.append(f'"{prev_db}" = ?')
+                    params.append(val)
+
+            query = f'SELECT DISTINCT "{db_col}" FROM Registros'
+            if conditions:
+                query += ' WHERE ' + ' AND '.join(conditions)
+            query += f' ORDER BY "{db_col}"'
+
+            cursor.execute(query, params)
+            opcoes = [row[0] for row in cursor.fetchall() if row[0]]
+
+            primeiro = opcoes[0] if opcoes else ''
+            # Usa o primeiro valor como filtro para os campos seguintes
+            if primeiro:
+                current_vals[form_name] = primeiro
+
+            result[form_name] = {'opcoes': opcoes, 'valor': primeiro}
 
         conn.close()
     except Exception as e:

@@ -104,12 +104,16 @@
         dataInput.value = `${ano}-${mes}-${dia}`;
     }
 
-    // Campos da cascata em ordem
+    // Campos independentes (opções DISTINCT sem filtro, não afetam a cascata)
+    const standaloneFields = ['rf_sub', 'unidade_coordenacao'];
+
+    // Cadeia de cascata: começa em Grupos
     const cascadeFields = [
-        'rf_sub', 'unidade_coordenacao', 'grupos',
-        'despesa_gerencial', 'iniciativa', 'gnd',
+        'grupos', 'despesa_gerencial', 'iniciativa', 'gnd',
         'tipo_despesa', 'po', 'acao', 'po_gnd'
     ];
+
+    const DESP_GER_IDX = cascadeFields.indexOf('despesa_gerencial');
 
     function getSelectEl(name) { return $('#id_' + name); }
 
@@ -121,7 +125,6 @@
             if (op === prev) $opt.prop('selected', true);
             $sel.append($opt);
         });
-        // se o valor anterior não está mais disponível, limpa
         if (prev && !opcoes.includes(prev)) $sel.val('');
         $sel.trigger('change.select2');
     }
@@ -130,18 +133,28 @@
         var idx = cascadeFields.indexOf(changedField);
         if (idx === -1) return;
 
+        // Apenas valores dos campos da cascata são usados como filtros
         var params = {};
         cascadeFields.forEach(function(f) {
             var v = getSelectEl(f).val();
             if (v) params[f] = v;
         });
 
-        $.get('/geofi/api/filtros-cascata/', params, function(data) {
-            // Atualiza apenas os campos a partir do próximo na cadeia
-            cascadeFields.slice(idx + 1).forEach(function(f) {
-                if (data[f]) rebuildSelect(getSelectEl(f), data[f]);
+        if (idx >= DESP_GER_IDX) {
+            // A partir de Despesa Gerencial: auto-preenche downstream com a primeira opção
+            params.changed_field = changedField;
+            $.get('/geofi/api/auto-fill-cascata/', params, function(data) {
+                cascadeFields.slice(idx + 1).forEach(function(f) {
+                    if (data[f]) rebuildSelect(getSelectEl(f), data[f].opcoes, data[f].valor);
+                });
             });
-        });
+        } else {
+            $.get('/geofi/api/filtros-cascata/', params, function(data) {
+                cascadeFields.slice(idx + 1).forEach(function(f) {
+                    if (data[f]) rebuildSelect(getSelectEl(f), data[f]);
+                });
+            });
+        }
     }
 
     $(document).ready(function() {
@@ -152,7 +165,14 @@
             language: { noResults: function() { return "Nenhum resultado encontrado"; } }
         });
 
-        // Liga o evento de change para cada campo da cascata
+        // Carrega opções iniciais de todos os campos (standalone + cascata) a partir do Registros
+        $.get('/geofi/api/filtros-cascata/', {}, function(data) {
+            standaloneFields.concat(cascadeFields).forEach(function(f) {
+                if (data[f]) rebuildSelect(getSelectEl(f), data[f], getSelectEl(f).val());
+            });
+        });
+
+        // Somente campos da cascata disparam atualização de opções downstream
         cascadeFields.forEach(function(f) {
             getSelectEl(f).on('change', function() {
                 atualizarCascataAPartirDe(f);

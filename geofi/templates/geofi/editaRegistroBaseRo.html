@@ -157,12 +157,16 @@
             language: { noResults: function() { return "Nenhum resultado encontrado"; } }
         });
 
-        // Cascata via tabela Registros do db.filtrosRO
+        // Campos independentes (opções DISTINCT sem filtro, não afetam a cascata)
+        const standaloneFields = ['rf_sub', 'unidade_coordenacao'];
+
+        // Cadeia de cascata: começa em Grupos
         const cascadeFields = [
-            'rf_sub', 'unidade_coordenacao', 'grupos',
-            'despesa_gerencial', 'iniciativa', 'gnd',
+            'grupos', 'despesa_gerencial', 'iniciativa', 'gnd',
             'tipo_despesa', 'po', 'acao', 'po_gnd'
         ];
+
+        const DESP_GER_IDX = cascadeFields.indexOf('despesa_gerencial');
 
         function getSelectEl(name) { return $('#id_' + name); }
 
@@ -179,27 +183,35 @@
             $sel.trigger('change.select2');
         }
 
-        function atualizarCascataAPartirDe(changedField, forceVals) {
+        function atualizarCascataAPartirDe(changedField) {
             var idx = cascadeFields.indexOf(changedField);
             if (idx === -1) return;
 
+            // Apenas valores dos campos da cascata são usados como filtros
             var params = {};
             cascadeFields.forEach(function(f) {
                 var v = getSelectEl(f).val();
                 if (v) params[f] = v;
             });
 
-            $.get('/geofi/api/filtros-cascata/', params, function(data) {
-                cascadeFields.slice(idx + 1).forEach(function(f) {
-                    if (data[f]) {
-                        var fv = forceVals ? forceVals[f] : undefined;
-                        rebuildSelect(getSelectEl(f), data[f], fv);
-                    }
+            if (idx >= DESP_GER_IDX) {
+                // A partir de Despesa Gerencial: auto-preenche downstream com a primeira opção
+                params.changed_field = changedField;
+                $.get('/geofi/api/auto-fill-cascata/', params, function(data) {
+                    cascadeFields.slice(idx + 1).forEach(function(f) {
+                        if (data[f]) rebuildSelect(getSelectEl(f), data[f].opcoes, data[f].valor);
+                    });
                 });
-            });
+            } else {
+                $.get('/geofi/api/filtros-cascata/', params, function(data) {
+                    cascadeFields.slice(idx + 1).forEach(function(f) {
+                        if (data[f]) rebuildSelect(getSelectEl(f), data[f]);
+                    });
+                });
+            }
         }
 
-        // Liga eventos de change para cada campo da cascata
+        // Somente campos da cascata disparam atualização de opções downstream
         cascadeFields.forEach(function(f) {
             getSelectEl(f).on('change', function() {
                 atualizarCascataAPartirDe(f);
@@ -207,11 +219,9 @@
         });
 
         {% if not form.is_bound %}
-        // Na abertura do formulário de edição, popula os dropdowns com as opções filtradas
-        // mantendo os valores salvos do registro.
+        // Na abertura, popula os dropdowns com as opções filtradas mantendo os valores salvos.
+        // rf_sub e unidade_coordenacao não participam dos filtros da cascata.
         var savedVals = {
-            rf_sub: registroInicial.rf_sub,
-            unidade_coordenacao: registroInicial.unidade_coordenacao,
             grupos: registroInicial.grupos,
             despesa_gerencial: registroInicial.despesa_gerencial,
             iniciativa: registroInicial.iniciativa,
@@ -225,6 +235,9 @@
             cascadeFields.forEach(function(f) {
                 if (data[f]) rebuildSelect(getSelectEl(f), data[f], savedVals[f]);
             });
+            // Standalone: populam com DISTINCT sem filtro, preservando valor salvo
+            if (data.rf_sub) rebuildSelect(getSelectEl('rf_sub'), data.rf_sub, registroInicial.rf_sub);
+            if (data.unidade_coordenacao) rebuildSelect(getSelectEl('unidade_coordenacao'), data.unidade_coordenacao, registroInicial.unidade_coordenacao);
         });
         {% endif %}
     });

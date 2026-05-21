@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/atualizar-campo/<int:id>/', views.atualiza_campo_view, name='atualiza_campo'),
     path('api/opcoes-campo/<str:campo>/', views.opcoes_campo_view, name='opcoes_campo'),
     path('api/filtros-cascata/', views.filtros_cascata_view, name='filtros_cascata'),
+    path('api/auto-fill-cascata/', views.auto_fill_cascata_view, name='auto_fill_cascata'),
 ]

@@ -26,7 +26,11 @@ def get_opcoes(campo_db):
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT valor FROM Filtros WHERE campo = ? ORDER BY valor", (campo_db,))
+        cursor.execute(
+            f'SELECT DISTINCT "{campo_db}" FROM Registros '
+            f'WHERE "{campo_db}" IS NOT NULL AND "{campo_db}" != "" '
+            f'ORDER BY "{campo_db}"'
+        )
         for row in cursor.fetchall():
             opcoes.append((row[0], row[0]))
         conn.close()
